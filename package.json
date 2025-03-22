@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"No tests yet\"",
-    "prepare": "husky init"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -17,6 +18,7 @@
     ]
   },
   "dependencies": {
+    "axios": "^1.8.4",
     "eslint-config-airbnb-typescript": "^18.0.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -33,14 +35,20 @@
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.2.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9.22.0",
+    "eslint": "^8.56.0",
     "eslint-config-next": "15.2.3",
     "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-mock-axios": "^4.8.0",
     "lint-staged": "^15.5.0",
     "tailwindcss": "^4",
+    "ts-jest": "^29.2.6",
     "typescript": "^5"
   }
 }
