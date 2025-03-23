@@ -1,4 +1,5 @@
-import React from "react";
+import React from 'react';
+import SamplePage from './samplePage';
 
 const Home = () => {
   return (
@@ -45,6 +46,7 @@ const Home = () => {
           Join the fun and share your favorite lyrics! ♪♡
         </p>
       </div>
+      <SamplePage />
     </main>
   );
 };
