@@ -4,10 +4,13 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ArrowLeft, CircleCheck, CircleX } from 'lucide-react';
 
 export default function SetUsername() {
   const [username, setUsername] = useState('');
-  const [status, setStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'available' | 'taken' | 'invalid'
+  >('idle');
 
   useEffect(() => {
     if (username.length < 1) {
@@ -41,13 +44,7 @@ export default function SetUsername() {
             href="/sign-up"
             className="flex gap-x-1 items-center text-gray-700 hover:text-gray-900"
           >
-            <Image
-              src="/icon/arrow-left.svg"
-              width={0}
-              height={0}
-              alt="back button"
-              className="w-5 h-5"
-            />
+            <ArrowLeft className="w-5 h-5" />
             Back
           </Link>
         </div>
@@ -55,10 +52,14 @@ export default function SetUsername() {
           <div className="justify-between flex flex-col md:min-w-[300px] lg:min-w-[400px] gap-y-12 md:gap-y-24 lg:gap-y-32">
             <div className="flex flex-col justify-center mx-auto w-full">
               <h1 className="text-2xl font-bold mb-2">Create Username</h1>
-              <p className="text-gray-600 mb-6 text-sm">Choose a unique username that represents you.</p>
+              <p className="text-gray-600 mb-6 text-sm">
+                Choose a unique username that represents you.
+              </p>
 
               <div className="space-y-2 mb-4">
-                <label htmlFor="username" className="block text-sm font-medium">Enter Username</label>
+                <label htmlFor="username" className="block text-sm font-medium">
+                  Enter Username
+                </label>
                 <input
                   id="username"
                   value={username}
@@ -75,38 +76,26 @@ export default function SetUsername() {
                   <div className="absolute">
                     {status === 'available' && username.length > 0 && (
                       <div className="flex items-center text-green-600 mt-2 gap-x-1">
-                        <Image
-                          src="/icon/check-circle.svg"
-                          width={0}
-                          height={0}
-                          alt="available"
-                          className="w-5 h-5"
-                        />
+                        <CircleCheck className="w-5 h-5" />
+
                         <span>{username} is available</span>
                       </div>
                     )}
                     {status === 'taken' && username.length > 0 && (
                       <div className="flex items-center text-red-600 mt-2 gap-x-2">
-                        <Image
-                          src="/icon/x-circle.svg"
-                          width={0}
-                          height={0}
-                          alt="taken"
-                          className="w-5 h-5"
-                        />
-                        <span>{username} has been taken, please try another name</span>
+                        <CircleX className="w-5 h-5" />
+                        <span>
+                          {username} has been taken, please try another name
+                        </span>
                       </div>
                     )}
                     {status === 'invalid' && (
                       <div className="flex items-center text-red-600 mt-2 gap-x-2">
-                        <Image
-                          src="/icon/x-circle.svg"
-                          width={0}
-                          height={0}
-                          alt="invalid"
-                          className="w-5 h-5"
-                        />
-                        <span>Username must be 4-15 characters & use only letters, numbers, or _</span>
+                        <CircleX className="w-5 h-5" />
+                        <span>
+                          Username must be 4-15 characters & use only letters,
+                          numbers, or _
+                        </span>
                       </div>
                     )}
                   </div>
@@ -138,7 +127,8 @@ export default function SetUsername() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: "url('/images/set-username-noise-image.png?height=1080&width=1080')",
+            backgroundImage:
+              "url('/images/set-username-noise-image.png?height=1080&width=1080')",
           }}
         />
       </div>
