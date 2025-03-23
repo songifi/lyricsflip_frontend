@@ -1,8 +1,8 @@
 'use client';
 
 import { Share } from 'lucide-react';
-import { CounterBadge } from '../atom/counter-badge';
-import { Button } from '../atom/button';
+import { CounterBadge } from '../atoms/counter-badge';
+import { Button } from '../atoms/button';
 
 interface ShareButtonProps {
   shareCount: number

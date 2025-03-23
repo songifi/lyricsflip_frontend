@@ -7,7 +7,7 @@ import { GameModal } from '@/components/organisms/game-modal';
 import { useModalStore } from '@/store/modal-store';
 import { useState } from 'react';
 import { Modal } from '@/components/organisms/modal';
-import { Button } from '@/components/atom/button';
+import { Button } from '@/components/atoms/button';
 
 export default function SamplePage() {
   const { openModal } = useModalStore();

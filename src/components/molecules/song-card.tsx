@@ -1,6 +1,6 @@
 'use client';
 
-import { ScoreBadge } from '../atom/score-badge';
+import { ScoreBadge } from '../atoms/score-badge';
 import { Card } from './card';
 
 

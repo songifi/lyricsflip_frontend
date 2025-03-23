@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/atoms/select';
 import { useModalStore } from '@/store/modal-store';
 import { Info } from 'lucide-react';
 import { Modal } from './modal';
@@ -86,4 +86,3 @@ export function GameModal() {
     </Modal>
   );
 }
-

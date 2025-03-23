@@ -1,8 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '../atom/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/atoms/dialog';
+import { Button } from '../atoms/button';
 
 interface ModalProps {
   isOpen: boolean
@@ -54,4 +54,3 @@ export function Modal({
     </Dialog>
   );
 }
-
