@@ -1,7 +1,9 @@
+import { LyricCard } from "@/components/organisms/LyricCard";
 import React from "react";
 
 const Home = () => {
   return (
+    <>
     <main className="flex items-center justify-center h-screen bg-background1">
       {/* Call Card */}
       <div className="bg-purplePrimary2 text-purplePrimary4 shadow-lg rounded-2xl p-xl w-3/4 md:w-1/2 text-center border-4 border-purplePrimary1">
@@ -19,7 +21,7 @@ const Home = () => {
         <div className="mt-xl p-lg bg-purplePrimary3 rounded-lg">
          
           <p className="text-md text-purplePrimary1 italic mt-md">
-            “All I know is that when I been shoot, I hit their own”
+            "All I know is that when I been shoot, I hit their own"
           </p>
         </div>
 
@@ -45,7 +47,22 @@ const Home = () => {
           Join the fun and share your favorite lyrics! ♪♡
         </p>
       </div>
+
+      
     </main>
+      <LyricCard lyrics={[
+        {
+          text: "First song lyrics here",
+          title: "Song Title",
+          artist: "Artist Name"
+        },
+        {
+          text: "Second song lyrics here",
+          title: "Another Song",
+          artist: "Another Artist"
+        }
+      ]} />
+    </>
   );
 };
 
