@@ -1,7 +1,10 @@
-import React from "react";
+import GameResultPopup from '@/components/GameResultPopup';
+import React from 'react';
 
 const Home = () => {
   return (
+    <>
+    
     <main className="flex items-center justify-center h-screen bg-background1">
       {/* Call Card */}
       <div className="bg-purplePrimary2 text-purplePrimary4 shadow-lg rounded-2xl p-xl w-3/4 md:w-1/2 text-center border-4 border-purplePrimary1">
@@ -46,6 +49,8 @@ const Home = () => {
         </p>
       </div>
     </main>
+      <GameResultPopup isWin={false} isMultiplayer={true}/>
+    </>
   );
 };
 
