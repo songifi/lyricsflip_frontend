@@ -3,6 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+body {
+  background-color: white;
+  color: black;
+}
+
+/* Dark mode styles */
+.dark body {
+  background-color: black;
+  color: white;
+}
+
 @theme {
   --color-tealPrimary1: #70E3C7;
   --color-tealPrimary2: #11624A;
@@ -150,6 +161,23 @@
     padding-top: var(--spacing-lg);
     padding-bottom: var(--spacing-lg);
   }
+  
+  /* 3D Card Flip Animation utilities */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
 
 }
 
@@ -233,5 +261,4 @@
     @apply bg-background text-foreground;
 
   }
-
 }

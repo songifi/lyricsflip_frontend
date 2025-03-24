@@ -25,7 +25,7 @@ export default function SamplePage() {
       </h1>
 
       {/* Game Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8 dark:text-white">
         <ShareButton shareCount={238} hugCount={72} onShare={() => console.log('Share clicked')} />
         <Button variant="purple" size="full" onClick={() => console.log('Play Again clicked')}>
           Play Again
@@ -33,7 +33,7 @@ export default function SamplePage() {
       </div>
 
       {/* Game Modes */}
-      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600">Choose your preferred game mode</h2>
+      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600 dark:text-white">Choose your preferred game mode</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <GameCard
           type="quick"
@@ -60,8 +60,8 @@ export default function SamplePage() {
       </div>
 
       {/* Song Cards */}
-      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600">Recent Songs</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600 dark:text-white">Recent Songs</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ">
         <SongCard title="Pakurumo" artist="Wizkid & Samklef" />
         <SongCard title="Don't Let Me Down" artist="Chainsmokers" score={413} maxScore={88} />
         <SongCard
@@ -86,8 +86,8 @@ export default function SamplePage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Game Preferences</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="text-sm font-medium dark:text-white">Game Preferences</h3>
+            <p className="text-sm text-gray-500 dark:text-white">
               Customize your game settings and preferences here. These settings will apply to all game modes.
             </p>
           </div>
