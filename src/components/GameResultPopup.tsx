@@ -24,11 +24,13 @@ const GameResultPopup: React.FC<GameResultProps> = ({
         </header>
         <div className=" w-[500px] h-full  flex flex-col justify-center  items-center">
           <div className="size-[200px]  ">
-            {isWin ? (
-              <img src="trophy.png" alt="trophy" className="w-full h-full" />
-            ) : (
-              <img src="warning.png" alt="lost" className="w-full h-full" />
-            )}
+            <Image
+              src={isWin ? '/trophy.png' : '/warning.png'}
+              alt={isWin ? 'trophy' : 'lost'}
+              width={200}
+              height={200}
+              className="w-full h-full"
+            />
           </div>
           <h1 className="font-semibold text-[32px]  text-[#000000] mb-4">
             <span className="font-bold text-[#70E3C7]">368 Points</span> -{' '}
@@ -83,15 +85,7 @@ const GameResultPopup: React.FC<GameResultProps> = ({
               <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
                 <p className="font-normal text-[#A4ACB4]">Winner</p>
                 <h5 className="">
-                  {
-                    isWin ? (
-
-                      <span>You</span>
-                    ) : (
-
-                      <span>theXaxxo (678 Pts)</span>
-                    )
-                  }
+                  {isWin ? <span>You</span> : <span>theXaxxo (678 Pts)</span>}
                 </h5>
               </div>
               <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
@@ -108,14 +102,7 @@ const GameResultPopup: React.FC<GameResultProps> = ({
               <div className="flex items-center justify-between h-12 py-3 border-b border-gray-200">
                 <p className="font-normal text-[#A4ACB4]">Second Place</p>
                 <h5 className="flex items-center gap-2">
-                  {isWin ? (
-                    <span>theXaxxo (345 Pts)</span>
-                  
-                  ) : (
-                    <span>You</span>
-
-                  )}
-
+                  {isWin ? <span>theXaxxo (345 Pts)</span> : <span>You</span>}
                 </h5>
               </div>
               <div className="flex items-center justify-between h-12 py-3 border-b border-gray-200">

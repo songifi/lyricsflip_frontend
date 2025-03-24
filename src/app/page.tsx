@@ -49,7 +49,7 @@ const Home = () => {
         </p>
       </div>
     </main>
-      <GameResultPopup isWin={false} isMultiplayer={true}/>
+      
     </>
   );
 };
