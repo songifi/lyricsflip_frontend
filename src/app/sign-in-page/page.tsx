@@ -15,7 +15,7 @@ export default function SignUpPage() {
           </p>
 
           <div className="mt-8 space-y-4">
-            <button className="bg-[#DBE1E7] text-[#090909] rounded-full flex w-full items-center justify-center gap-2 py-6">
+            <button className="bg-[#DBE1E7] cursor-pointer text-[#090909] rounded-full flex w-full items-center justify-center gap-2 py-6">
               <Image
                 src="/image3.png"
                 width={24}
@@ -26,7 +26,7 @@ export default function SignUpPage() {
               <span>Continue with Argent</span>
             </button>
 
-            <button className="bg-[#DBE1E7] text-[#090909] rounded-full flex w-full items-center justify-center gap-2 py-6">
+            <button className="bg-[#DBE1E7] cursor-pointer text-[#090909] rounded-full flex w-full items-center justify-center gap-2 py-6">
               <Image
                 src="/image2.png"
                 width={24}
@@ -37,7 +37,7 @@ export default function SignUpPage() {
               <span>Continue with OKX</span>
             </button>
 
-            <button className="bg-[#DBE1E7] text-[#090909] rounded-full flex w-full items-center justify-center gap-2 py-6">
+            <button className="bg-[#DBE1E7] cursor-pointer text-[#090909] rounded-full flex w-full items-center justify-center gap-2 py-6">
               <Image
                 src="/image1.png"
                 width={24}
@@ -56,11 +56,11 @@ export default function SignUpPage() {
             </span>
             <span className="bg-[#DBE1E7] w-full h-[1px]"></span>
           </div>
-        </div>
         <div className="mt-8 w-full mx-auto">
-          <button className="mt-8 w-full rounded-full bg-purple-600 py-6 hover:bg-purple-700">
+          <button className="mt-8 w-full cursor-pointer rounded-full bg-purple-600 py-6 hover:bg-purple-700">
             Connect Wallet
           </button>
+        </div>
         </div>
       </div>
 
