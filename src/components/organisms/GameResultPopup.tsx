@@ -2,7 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import { FaCircleCheck } from 'react-icons/fa6';
 import { MdCancel } from 'react-icons/md';
-import { Button } from './ui/button';
+import { Button } from '@components/atoms/button';
 import { X } from 'lucide-react';
 
 interface GameResultProps {
@@ -15,6 +15,10 @@ const GameResultPopup: React.FC<GameResultProps> = ({
   isMultiplayer,
 }) => {
   return (
+    <>
+
+
+    
     <section className=" h-screen  w-full flex flex-col justify-center items-center">
       <main className="w-[580px] h-[960px] py-4 bg-white flex flex-col justify-center  rounded-2xl items-center  ">
         <header className="w-[580px] flex justify-end items-center pr-4 pb-4 ">
@@ -112,17 +116,28 @@ const GameResultPopup: React.FC<GameResultProps> = ({
             </article>
           )}
           {/* button */}
-          <main className="flex items-end justify-between w-full  h-full ">
-            <button className="w-[238px] px-2 py-6 border border-[#9747FF] h-[72px] flex justify-center items-center rounded-full font-medium text-md  text-[#9747FF] ">
+         <main className="flex items-end justify-between w-full  h-full ">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-[238px] px-2 py-6  border-[#9747FF] h-[72px] flex justify-center items-center rounded-full font-medium text-md  text-[#9747FF] "
+            >
               Share
-            </button>
-            <button className="w-[238px] px-2 py-6 bg-[#9747FF] h-[72px] flex justify-center items-center rounded-full font-medium text-md  text-white ">
+            </Button>
+            <Button
+              variant="purple"
+              size="lg"
+              className="w-[238px] px-2 py-6  h-[72px] flex justify-center items-center rounded-full font-medium text-md  text-white "
+            >
               Claim Earning
-            </button>
+            </Button>
           </main>
         </div>
       </main>
     </section>
+
+    
+    </>
   );
 };
 

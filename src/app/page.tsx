@@ -1,6 +1,8 @@
 import { LyricCard } from "@/components/organisms/LyricCard";
 import React from 'react';
 import SamplePage from './samplePage';
+import GameResultModal from "@/components/organisms/GameResultModal";
+import GameResultPopup from "@/components/organisms/GameResultPopup";
 
 const Home = () => {
   return (
@@ -49,6 +51,7 @@ const Home = () => {
         </p>
       </div>
       <SamplePage />
+ 
     </main>
       <LyricCard lyrics={[
         {
