@@ -8,7 +8,8 @@ import { useModalStore } from '@/store/modal-store';
 import { useState } from 'react';
 import { Modal } from '@/components/organisms/modal';
 import { Button } from '@/components/atoms/button';
-import BadgeModal from '@/components/NewBadgeModal/newbadgemodal';
+import BadgeModal from '@/components/organisms/newbadgemodal';
+
 
 export default function SamplePage() {
   const { openModal } = useModalStore();
