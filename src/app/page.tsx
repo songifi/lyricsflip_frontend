@@ -1,10 +1,16 @@
+"use client"
 import { LyricCard } from "@/components/organisms/LyricCard";
 import React from 'react';
 import SamplePage from './samplePage';
-import GameResultModal from "@/components/organisms/GameResultModal";
 import GameResultPopup from "@/components/organisms/GameResultPopup";
+import { useRouter } from "next/navigation";
 
 const Home = () => {
+  const router = useRouter()
+
+  const handleJoinRoom = () => {
+    router.push("/multiplayer")
+  }
   return (
     <>
     <main className="flex items-center justify-center h-screen bg-background1">
@@ -26,6 +32,15 @@ const Home = () => {
           <p className="text-md text-purplePrimary1 italic mt-md">
             "All I know is that when I been shoot, I hit their own"
           </p>
+        </div>
+
+        <div className="pt-6">
+          <button
+            onClick={handleJoinRoom}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-6 text-lg rounded-lg"
+          >
+            Join Multiplayer Room
+          </button>
         </div>
 
         {/* Additional Content */}
@@ -66,6 +81,8 @@ const Home = () => {
         }
       ]} />
     </>
+
+    
   );
 };
 
