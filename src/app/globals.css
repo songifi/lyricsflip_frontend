@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,38 +15,66 @@ body {
 }
 
 @theme {
-  --color-tealPrimary1: #70E3C7;
-  --color-tealPrimary2: #11624A;
-  --color-tealPrimary3: #66CDAA;
-  --color-tealPrimary4: #71E3C7;
+  --color-tealPrimary1: #70e3c7;
+  --color-tealPrimary2: #11624a;
+  --color-tealPrimary3: #66cdaa;
+  --color-tealPrimary4: #71e3c7;
+  --color-tealPrimary1: #70e3c7;
+  --color-tealPrimary2: #11624a;
+  --color-tealPrimary3: #66cdaa;
+  --color-tealPrimary4: #71e3c7;
   --color-purplePrimary1: #490878;
-  --color-purplePrimary2: #DAC2FF;
-  --color-purplePrimary3: #F3EBFFCC;
-  --color-purplePrimary4: #4C2480;
-  --color-whitePrimary1: #DBE2E7;
-  --color-brownPrimary1: #CD7F32;
-  --color-silverPrimary1: #C0C0C0;
-  --color-goldPrimary1: #FFD700;
-  --color-brownPrimary2: #F5CFCC;
-  --color-tealSecondary1: #2EAE4E;
+  --color-purplePrimary2: #dac2ff;
+  --color-purplePrimary3: #f3ebffcc;
+  --color-purplePrimary4: #4c2480;
+  --color-purplePrimary5: #9747ff;
+  --color-whitePrimary1: #dbe2e7;
+  --color-brownPrimary1: #cd7f32;
+  --color-silverPrimary1: #c0c0c0;
+  --color-goldPrimary1: #ffd700;
+  --color-brownPrimary2: #f5cfcc;
+  --color-tealSecondary1: #2eae4e;
+  --color-purplePrimary2: #dac2ff;
+  --color-purplePrimary3: #f3ebffcc;
+  --color-purplePrimary4: #4c2480;
+  --color-purplePrimary5: #9747ff;
+  --color-whitePrimary1: #dbe2e7;
+  --color-brownPrimary1: #cd7f32;
+  --color-silverPrimary1: #c0c0c0;
+  --color-goldPrimary1: #ffd700;
+  --color-brownPrimary2: #f5cfcc;
+  --color-tealSecondary1: #2eae4e;
   --color-purpleSecondary1: #090909;
   --color-blackSecondary1: #000000;
   --color-greySecondary1: #666666;
   --color-greySecondary2: #646975;
-  --color-whiteSecondary1: #DBE2E8;
-  --color-whiteSecondary2: #DBE1E7;
-  --color-tealSecondary2: #CBF6EA;
-  --color-brownSecondary1: #A0522D;
-  --color-silverSecondary1: #A9A9A9;
-  --color-goldSecondary1: #DAA520;
-  --color-greenSecondary1: #0AC660;
-  --color-background1: #FFFFFF;
-  --color-background2: #F5F5F5;
-  --color-background3: #EEFCF8CC;
+  --color-whiteSecondary1: #dbe2e8;
+  --color-whiteSecondary2: #dbe1e7;
+  --color-tealSecondary2: #cbf6ea;
+  --color-brownSecondary1: #a0522d;
+  --color-silverSecondary1: #a9a9a9;
+  --color-goldSecondary1: #daa520;
+  --color-greenSecondary1: #0ac660;
+  --color-background1: #ffffff;
+  --color-background2: #f5f5f5;
+  --color-background3: #eefcf8cc;
+  --color-whiteSecondary1: #dbe2e8;
+  --color-whiteSecondary2: #dbe1e7;
+  --color-tealSecondary2: #cbf6ea;
+  --color-brownSecondary1: #a0522d;
+  --color-silverSecondary1: #a9a9a9;
+  --color-goldSecondary1: #daa520;
+  --color-greenSecondary1: #0ac660;
+  --color-background1: #ffffff;
+  --color-background2: #f5f5f5;
+  --color-background3: #eefcf8cc;
   --color-purplebackground1: #040311;
-  --color-success: #2EAE4E;
-  --color-error: #CE0000;
-  --color-walletIcon: #FF875B;
+  --color-success: #2eae4e;
+  --color-error: #ce0000;
+  --color-walletIcon: #ff875b;
+  --color-success: #2eae4e;
+  --color-error: #ce0000;
+  --color-walletIcon: #ff875b;
 
   /* Font Sizes */
   --text-sm1: 8px;
@@ -64,8 +92,8 @@ body {
   --spacing-xl: 32px;
   --spacing-2xl: 40px;
   --spacing-7xl: 720px;
+}
 
- }
 
 @theme inline {
   --color-background: var(--background);
@@ -161,24 +189,6 @@ body {
     padding-top: var(--spacing-lg);
     padding-bottom: var(--spacing-lg);
   }
-  
-  /* 3D Card Flip Animation utilities */
-  .perspective-1000 {
-    perspective: 1000px;
-  }
-  
-  .transform-style-3d {
-    transform-style: preserve-3d;
-  }
-  
-  .backface-hidden {
-    backface-visibility: hidden;
-  }
-  
-  .rotate-y-180 {
-    transform: rotateY(180deg);
-  }
-
 }
 
 :root {
@@ -214,7 +224,6 @@ body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-
 }
 
 .dark {
@@ -249,16 +258,14 @@ body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-
   }
   body {
     @apply bg-background text-foreground;
-
   }
 }
+
