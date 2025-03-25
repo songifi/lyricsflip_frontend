@@ -2,8 +2,8 @@
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { LyricCard } from "@/components/organisms/LyricCard"
-import { StatisticsPanel } from "@/components/statistics-panel"
-import { SongOptions } from "@/components/song-options"
+import { StatisticsPanel } from "@/components/molecules/statistics-panel"
+import { SongOptions } from "@/components/molecules/song-options"
 import { useMultiplayerRoom, type Player } from "@/hooks/use-multiplayer-room"
 import { useEffect, useState } from "react"
 
