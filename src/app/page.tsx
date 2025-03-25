@@ -1,11 +1,19 @@
+<<<<<<< HEAD
 "use client"
+=======
+'use client';
+>>>>>>> c913bd8 (feat: moved the newBadgeModal into organism folder)
 
 import { LyricCard } from '@/components/organisms/LyricCard';
 import React from 'react';
 import SamplePage from './samplePage';
 import GameResultModal from '@/components/organisms/GameResultModal';
 import GameResultPopup from '@/components/organisms/GameResultPopup';
+<<<<<<< HEAD
 import BadgeModal from '@/components/NewBadgeModal/newbadgemodal';
+=======
+import BadgeModal from '@/components/organisms/newbadgemodal';
+>>>>>>> c913bd8 (feat: moved the newBadgeModal into organism folder)
 
 const Home = () => {
   return (
