@@ -1,31 +1,25 @@
-<<<<<<< HEAD
-"use client"
-=======
 'use client';
->>>>>>> c913bd8 (feat: moved the newBadgeModal into organism folder)
 
 import { LyricCard } from '@/components/organisms/LyricCard';
 import React from 'react';
 import SamplePage from './samplePage';
+import Navbar from "../components/Navbar"
 import GameResultModal from '@/components/organisms/GameResultModal';
 import GameResultPopup from '@/components/organisms/GameResultPopup';
-<<<<<<< HEAD
-import BadgeModal from '@/components/NewBadgeModal/newbadgemodal';
-=======
 import BadgeModal from '@/components/organisms/newbadgemodal';
->>>>>>> c913bd8 (feat: moved the newBadgeModal into organism folder)
 
 const Home = () => {
   return (
-    <>
-      <main className="flex items-center justify-center h-screen bg-background1">
+    <div className={`bg-background1 dark:bg-gray-900 `}>
+      <Navbar />
+      <main className="flex items-center justify-center h-screen mt-12">
         {/* Call Card */}
         <div className="bg-purplePrimary2 text-purplePrimary4 shadow-lg rounded-2xl p-xl w-3/4 md:w-1/2 text-center border-4 border-purplePrimary1">
           {/* Title */}
           <h1 className="text-lg3 font-bold text-tealPrimary1">
             Welcome to LyricsFlip 🎵😁
           </h1>
-          {/* <BadgeModal onClose={() => {}} /> */}
+
           {/* Subtitle */}
           <p className="text-lg text-greySecondary1 mt-lg">
             Discover and flip through your favorite lyrics with ease.
@@ -55,27 +49,26 @@ const Home = () => {
             Get Started
           </button>
 
-          {/* Additional Info */}
-          <p className="text-sm2 text-greySecondary2 mt-xl">
-            Join the fun and share your favorite lyrics! ♪♡
-          </p>
-        </div>
-        <SamplePage />
-      </main>
-      <LyricCard
-        lyrics={[
-          {
-            text: 'First song lyrics here',
-            title: 'Song Title',
-            artist: 'Artist Name',
-          },
-          {
-            text: 'Second song lyrics here',
-            title: 'Another Song',
-            artist: 'Another Artist',
-          },
-        ]}
-      />
+        {/* Additional Info */}
+        <p className="text-sm2 text-greySecondary2 mt-xl">
+          Join the fun and share your favorite lyrics! ♪♡
+        </p>
+      </div>
+      <SamplePage />
+ 
+    </main>
+      <LyricCard lyrics={[
+        {
+          text: "First song lyrics here",
+          title: "Song Title",
+          artist: "Artist Name"
+        },
+        {
+          text: "Second song lyrics here",
+          title: "Another Song",
+          artist: "Another Artist"
+        }
+      ]} />
     </>
   );
 };
