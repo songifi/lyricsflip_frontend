@@ -1,9 +1,12 @@
+'use client';
+
 import { LyricCard } from '@/components/organisms/LyricCard';
 import React from 'react';
 import SamplePage from './samplePage';
-import Navbar from '../components/Navbar';
-import GameResultModal from "@/components/organisms/GameResultModal";
-import GameResultPopup from "@/components/organisms/GameResultPopup";
+import Navbar from "../components/Navbar"
+import GameResultModal from '@/components/organisms/GameResultModal';
+import GameResultPopup from '@/components/organisms/GameResultPopup';
+import BadgeModal from '@/components/organisms/newbadgemodal';
 
 const Home = () => {
   return (
@@ -46,29 +49,27 @@ const Home = () => {
             Get Started
           </button>
 
-          {/* Additional Info */}
-          <p className="text-sm2 text-greySecondary2 mt-xl">
-            Join the fun and share your favorite lyrics! ♪♡
-          </p>
-        </div>
-        <SamplePage />
-   
+        {/* Additional Info */}
+        <p className="text-sm2 text-greySecondary2 mt-xl">
+          Join the fun and share your favorite lyrics! ♪♡
+        </p>
+      </div>
+      <SamplePage />
+ 
     </main>
-      <LyricCard
-        lyrics={[
-          {
-            text: 'First song lyrics here',
-            title: 'Song Title',
-            artist: 'Artist Name',
-          },
-          {
-            text: 'Second song lyrics here',
-            title: 'Another Song',
-            artist: 'Another Artist',
-          },
-        ]}
-      />
-    </div>
+      <LyricCard lyrics={[
+        {
+          text: "First song lyrics here",
+          title: "Song Title",
+          artist: "Artist Name"
+        },
+        {
+          text: "Second song lyrics here",
+          title: "Another Song",
+          artist: "Another Artist"
+        }
+      ]} />
+    </>
   );
 };
 
