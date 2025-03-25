@@ -1,7 +1,7 @@
 // src/components/GameTimerDisplay.tsx
 import { useEffect } from 'react';
 import { useStore } from '@/store/GameStores';
-import { useGameTimer } from '../features/game/hooks/useGameTimer';
+import { useGameTimer } from '../../features/game/hooks/useGameTimer';
 
 export const GameTimerDisplay = () => {
   const { score, level, isPlaying } = useStore(state => state.game);
