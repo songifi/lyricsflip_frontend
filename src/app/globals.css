@@ -3,6 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+body {
+  background-color: white;
+  color: black;
+}
+
+/* Dark mode styles */
+.dark body {
+  background-color: black;
+  color: white;
+}
+
 @theme {
   --color-tealPrimary1: #70e3c7;
   --color-tealPrimary2: #11624a;
