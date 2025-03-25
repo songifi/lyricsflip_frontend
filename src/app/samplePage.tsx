@@ -8,10 +8,13 @@ import { useModalStore } from '@/store/modal-store';
 import { useState } from 'react';
 import { Modal } from '@/components/organisms/modal';
 import { Button } from '@/components/atoms/button';
+import BadgeModal from '@/components/organisms/newbadgemodal';
+
 
 export default function SamplePage() {
   const { openModal } = useModalStore();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showBadgeModal, setShowBadgeModal] = useState(true);
 
   // Example of using the reusable modal with different content
   const handleOpenSettingsModal = () => {
@@ -20,20 +23,33 @@ export default function SamplePage() {
 
   return (
     <main className="container mx-auto p-4 max-w-5xl mt-20">
+      {showBadgeModal && (
+        <BadgeModal onClose={() => setShowBadgeModal(false)} />
+      )}
       <h1 className="text-2xl font-bold mb-8 text-center">
-        Welcome to LyricFlip, <span className="text-purple-600">thetimijeyin</span>
+        Welcome to LyricFlip,{' '}
+        <span className="text-purple-600">thetimijeyin</span>
       </h1>
-
       {/* Game Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
-        <ShareButton shareCount={238} hugCount={72} onShare={() => console.log('Share clicked')} />
-        <Button variant="purple" size="full" onClick={() => console.log('Play Again clicked')}>
+        <ShareButton
+          shareCount={238}
+          hugCount={72}
+          onShare={() => console.log('Share clicked')}
+        />
+        <Button
+          variant="purple"
+          size="full"
+          onClick={() => console.log('Play Again clicked')}
+        >
           Play Again
         </Button>
       </div>
 
       {/* Game Modes */}
-      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600">Choose your preferred game mode</h2>
+      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600">
+        Choose your preferred game mode
+      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <GameCard
           type="quick"
@@ -60,10 +76,17 @@ export default function SamplePage() {
       </div>
 
       {/* Song Cards */}
-      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600">Recent Songs</h2>
+      <h2 className="text-lg font-semibold uppercase mb-4 text-gray-600">
+        Recent Songs
+      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SongCard title="Pakurumo" artist="Wizkid & Samklef" />
-        <SongCard title="Don't Let Me Down" artist="Chainsmokers" score={413} maxScore={88} />
+        <SongCard
+          title="Don't Let Me Down"
+          artist="Chainsmokers"
+          score={413}
+          maxScore={88}
+        />
         <SongCard
           title="Blood on The Dance Floor"
           artist="ODUMODU BLVCK, Bloody Civilian & Waje"
@@ -88,22 +111,28 @@ export default function SamplePage() {
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Game Preferences</h3>
             <p className="text-sm text-gray-500">
-              Customize your game settings and preferences here. These settings will apply to all game modes.
+              Customize your game settings and preferences here. These settings
+              will apply to all game modes.
             </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Notification Settings</h3>
-            <p className="text-sm text-gray-500">Control which notifications you receive and how they are delivered.</p>
+            <p className="text-sm text-gray-500">
+              Control which notifications you receive and how they are
+              delivered.
+            </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Account Settings</h3>
-            <p className="text-sm text-gray-500">Manage your account details, privacy settings, and linked accounts.</p>
+            <p className="text-sm text-gray-500">
+              Manage your account details, privacy settings, and linked
+              accounts.
+            </p>
           </div>
         </div>
       </Modal>
     </main>
   );
 }
-

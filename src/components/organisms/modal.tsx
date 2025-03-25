@@ -35,7 +35,7 @@ export function Modal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose} >
-      <DialogContent className=" sm:max-w-md bg-amber-500 ]">
+      <DialogContent className=" sm:max-w-md  bg-amber-500 ]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
