@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/atoms/dialog';
 import { Button } from '../atoms/button';
+import { cn } from '@/lib/utils';
 
 interface ModalProps {
   isOpen: boolean
@@ -13,6 +14,7 @@ interface ModalProps {
   footerContent?: ReactNode
   primaryActionLabel?: string
   onPrimaryAction?: () => void
+  bgColor?: string
 }
 
 export function Modal({
@@ -24,6 +26,7 @@ export function Modal({
   footerContent,
   primaryActionLabel = 'Confirm',
   onPrimaryAction,
+  bgColor = 'bg-amber-500',
 }: ModalProps) {
   const handlePrimaryAction = () => {
     if (onPrimaryAction) {
@@ -35,21 +38,21 @@ export function Modal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose} >
-      <DialogContent className=" sm:max-w-md  bg-amber-500 ]">
+      {/* @ts-ignore */}
+      <DialogContent className={cn("max-w-[28rem]", bgColor)}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <div className="py-4 ">{children}</div>
         
-       
-
-
         {footerContent ? (
           footerContent
         ) : (
-          <Button variant="purple" size="full" onClick={handlePrimaryAction}>
-            {primaryActionLabel}
+          <Button variant="purple" size="full" asChild>
+            <button onClick={handlePrimaryAction}>
+              {primaryActionLabel}
+            </button>
           </Button>
         )}
       </DialogContent>
