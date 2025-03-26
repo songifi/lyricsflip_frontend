@@ -1,10 +1,8 @@
 'use client';
 import { SongOptions } from '@/components/molecules/song-options';
 import { StatisticsPanel } from '@/components/molecules/statistics-panel';
-import { GameResultModal } from '@/components/organisms/GameResultModal';
 import { LyricCard } from '@/components/organisms/LyricCard';
 import { useSinglePlayer } from '@/features/game/hooks/useSinglePlayer';
-import { formatTime } from '@/lib/utils';
 import { useGameStore } from '@/store/game';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -77,7 +75,7 @@ export default function SinglePlayerGame() {
         {/* Statistics panel - right column */}
         <div className="lg:col-start-3 lg:col-span-1 order-2 lg:order-3">
           <StatisticsPanel
-            timeLeft={formatTime(gameStore.timeLeft)}
+            time={`${gameStore.timeLeft}`}
             potWin={`${gameStore.potentialWin} STRK`}
             scores={`${gameStore.score} / ${gameStore.maxRounds}`}
           />
@@ -91,7 +89,6 @@ export default function SinglePlayerGame() {
         selectedOption={selectedOption}
         correctOption={correctOption}
       />
-      <GameResultModal />
     </div>
   );
 }

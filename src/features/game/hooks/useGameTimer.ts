@@ -7,23 +7,24 @@ interface UseGameTimerReturn {
   isTimerRunning: boolean;
   startGame: () => void;
   endGame: () => void;
+  isPlaying: boolean;
   startTimer: () => void;
   stopTimer: () => void;
   resetTimer: (newTime?: number) => void;
 }
 
 export const useGameTimer = (): UseGameTimerReturn => {
-  const { 
-    timeLeft, 
-    isTimerRunning, 
+  const {
+    timeLeft,
+    isTimerRunning,
     isPlaying,
-    startGame, 
-    endGame, 
-    startTimer, 
-    stopTimer, 
+    startGame,
+    endGame,
+    startTimer,
+    stopTimer,
     resetTimer,
     tickTimer,
-  } = useStore(state => state.game);
+  } = useStore((state) => state.game);
 
   // Timer countdown logic
   useEffect(() => {
@@ -39,17 +40,18 @@ export const useGameTimer = (): UseGameTimerReturn => {
   }, [isTimerRunning, isPlaying, tickTimer]);
 
   // Optional: Auto-start timer when game starts
-  useEffect(() => {
-    if (isPlaying) {
-      resetTimer();
-      startTimer();
-    }
-  }, [isPlaying, resetTimer, startTimer]);
+  // useEffect(() => {
+  // if (isPlaying) {
+  // resetTimer();
+  // startTimer();
+  // }
+  // }, [isPlaying, resetTimer, startTimer]);
 
   return {
     timeLeft,
     isTimerRunning,
     startGame,
+    isPlaying,
     endGame,
     startTimer,
     stopTimer,
