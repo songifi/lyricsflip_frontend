@@ -1,20 +1,20 @@
 import { StateCreator } from 'zustand';
-import { GameState,GameActions, Store } from '../Types';
+import { GameState, GameActions, Store } from '../Types';
 
 export const initialGameState: GameState = {
   score: 0,
   level: 1,
   isPlaying: false,
   lastPlayed: null,
-  timeLeft: 15,         
-  isTimerRunning: false, 
+  timeLeft: 15,
+  isTimerRunning: false,
 };
 
 export const createGameSlice: StateCreator<
-Store, 
-[['zustand/immer', never]],
-[['zustand/immer', never]],
-{ game: GameState } & { game: GameActions }
+  Store,
+  [['zustand/immer', never]],
+  [['zustand/immer', never]],
+  { game: GameState } & { game: GameActions }
 > = (set) => ({
   game: {
     ...initialGameState,
@@ -37,7 +37,7 @@ Store,
         state.game.isPlaying = true;
         state.game.score = 0;
         state.game.level = 1;
-        state.game.timeLeft = 15;  // Reset timer on game start
+        state.game.timeLeft = 15; // Reset timer on game start
         state.game.isTimerRunning = false;
       });
     },
@@ -55,6 +55,7 @@ Store,
       set((state) => {
         if (state.game.timeLeft > 0) {
           state.game.isTimerRunning = true;
+          state.game.isPlaying = true;
         }
       });
     },
@@ -68,7 +69,6 @@ Store,
     resetTimer: (newTime = 15) => {
       set((state) => {
         state.game.timeLeft = newTime;
-        state.game.isTimerRunning = false;
       });
     },
 
@@ -85,6 +85,5 @@ Store,
         }
       });
     },
-
   },
 });
