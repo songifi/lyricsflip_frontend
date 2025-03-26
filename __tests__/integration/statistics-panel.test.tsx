@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { StatisticsPanel } from '@/components/molecules/statistics-panel';
 import { useGameTimer } from '@/features/game/hooks/useGameTimer';
 
@@ -17,7 +17,33 @@ describe('StatisticsPanel', () => {
     jest.useRealTimers();
   });
 
-  // Your first test remains the same...
+  it('should show game result popup when timer expires', async () => {
+    // Mock the useGameTimer hook implementation
+    const mockUseGameTimer = useGameTimer as jest.Mock;
+    mockUseGameTimer.mockImplementation(() => ({
+      timeLeft: 5,
+      startTimer: jest.fn(),
+      resetTimer: jest.fn(),
+      endGame: jest.fn(),
+      isPlaying: true,
+    }));
+
+    render(<StatisticsPanel time="0:05" potWin="1000 STRK" scores={100} />);
+
+    // Update the mock to simulate timer expiration
+    mockUseGameTimer.mockImplementation(() => ({
+      timeLeft: 0,
+      startTimer: jest.fn(),
+      resetTimer: jest.fn(),
+      endGame: jest.fn(),
+      isPlaying: false,
+    }));
+
+    // Fast-forward timers
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+  });
 
   // Updated test for timer color changes
   it('should handle timer color changes based on game state', () => {
