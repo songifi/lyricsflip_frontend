@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type ModalType = 'game' | 'settings' | 'profile' | 'leaderboard' | null;
+type ModalType = 'game' | 'settings' | 'profile' | 'leaderboard' | 'wager' | null;
 
 interface ModalState {
   isOpen: boolean
