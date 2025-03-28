@@ -1,17 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useGameStore } from '@/store/game';
-import { useModalStore } from '@/store/modal-store';
-import { LyricData, SongOption } from '@/store';
 import { GENRE_LYRICS } from '@/lib/utils';
+import { LyricData, SongOption } from '@/store';
+import { useGameStore } from '@/store/game';
+import { useEffect, useState } from 'react';
 
 export const useSinglePlayer = (genre: string) => {
   const gameStore = useGameStore();
-  const { openModal } = useModalStore();
 
   const [currentLyric, setCurrentLyric] = useState<LyricData | null>(null);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [selectedOption, setSelectedOption] = useState<SongOption | null>(null);
   const [correctOption, setCorrectOption] = useState<SongOption | null>(null);
+  const [gameResult, setGameResult] = useState<{
+    isWin: boolean;
+    isMultiplayer: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (genre) {
@@ -19,20 +21,6 @@ export const useSinglePlayer = (genre: string) => {
       setIsGameStarted(true);
     }
   }, [genre]);
-
-  useEffect(() => {
-    if (!isGameStarted) return;
-
-    const timer = setInterval(() => {
-      if (gameStore.timeLeft > 0) {
-        gameStore.decreaseTime();
-      } else {
-        endGame(false);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameStore.timeLeft, isGameStarted]);
 
   const startNewRound = () => {
     const genreLyricList = GENRE_LYRICS[genre as keyof typeof GENRE_LYRICS];
@@ -70,8 +58,17 @@ export const useSinglePlayer = (genre: string) => {
   };
 
   const endGame = (didWin: boolean) => {
-    const modalType = didWin ? 'won' : 'lost';
-    openModal(modalType);
+    setGameResult({
+      isWin: didWin,
+      isMultiplayer: false,
+    });
+  };
+
+  const resetGame = () => {
+    gameStore.resetGame();
+    setIsGameStarted(false);
+    setCurrentLyric(null);
+    setGameResult(null);
   };
 
   return {
@@ -80,5 +77,7 @@ export const useSinglePlayer = (genre: string) => {
     selectedOption,
     correctOption,
     handleSongSelect,
+    gameResult,
+    resetGame,
   };
 };

@@ -1,6 +1,7 @@
 'use client';
 import { SongOptions } from '@/components/molecules/song-options';
 import { StatisticsPanel } from '@/components/molecules/statistics-panel';
+import GameResultPopup from '@/components/organisms/GameResultPopup';
 import { LyricCard } from '@/components/organisms/LyricCard';
 import { useSinglePlayer } from '@/features/game/hooks/useSinglePlayer';
 import { useGameStore } from '@/store/game';
@@ -19,6 +20,7 @@ export default function SinglePlayerGame() {
     selectedOption,
     correctOption,
     handleSongSelect,
+    gameResult,
   } = useSinglePlayer(genre);
 
   const handleBack = () => {
@@ -56,6 +58,14 @@ export default function SinglePlayerGame() {
           {`${genre} Genre | ${difficulty} Difficulty`}
         </p>
       </div>
+
+      {/* Game result popup */}
+      {gameResult && (
+        <GameResultPopup
+          isWin={gameResult.isWin}
+          isMultiplayer={gameResult.isMultiplayer}
+        />
+      )}
 
       {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

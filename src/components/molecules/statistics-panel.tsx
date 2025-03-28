@@ -3,23 +3,20 @@ import { useEffect, useState } from 'react';
 
 import { useGameTimer } from '@/features/game/hooks/useGameTimer';
 import GameResultPopup from '../organisms/GameResultPopup';
+import { formatTime } from '@/lib/utils';
 
 interface StatisticsPanelProps {
   time: string;
   potWin: string;
   scores: string;
+  multiplayer?: boolean;
 }
-
-const formatTime = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
 
 export function StatisticsPanel({
   time,
   potWin,
   scores,
+  multiplayer = false,
 }: StatisticsPanelProps) {
   const [remainingTime, setRemainingTime] = useState<string>(time);
   const [gameStatus, setGameStatus] = useState<boolean>(true);
@@ -52,7 +49,7 @@ export function StatisticsPanel({
   if (gameStatus === false) {
     return (
       <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center">
-        <GameResultPopup isWin={false} isMultiplayer={true} />
+        <GameResultPopup isWin={false} isMultiplayer={multiplayer} />
       </div>
     );
   }

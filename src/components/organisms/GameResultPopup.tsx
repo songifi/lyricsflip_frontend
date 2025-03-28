@@ -1,33 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { FaCircleCheck } from 'react-icons/fa6';
 import { MdCancel } from 'react-icons/md';
 import { Button } from '@components/atoms/button';
-import { X } from 'lucide-react';
+import { Modal } from './modal';
+import { useSinglePlayer } from '@/features/game/hooks/useSinglePlayer';
+import { useGameStore } from '@/store/game';
+import { useRouter } from 'next/navigation';
 
-interface GameResultProps {
+interface GameResultPopupProps {
   isWin: boolean;
   isMultiplayer: boolean;
 }
 
-const GameResultPopup: React.FC<GameResultProps> = ({
+const GameResultPopup: React.FC<GameResultPopupProps> = ({
   isWin,
   isMultiplayer,
 }) => {
-  return (
-    <>
+  const [isModalOpen, setIsModalOpen] = useState(true);
+  const gameStore = useGameStore();
+  const genre = gameStore.gameConfig.genre;
+  const { resetGame } = useSinglePlayer(genre);
+  const router = useRouter();
+  const percent = (gameStore.score / gameStore.maxRounds) * 100;
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    resetGame();
+    router.push('/');
+  };
 
-    
-    <section className=" h-screen  w-full flex flex-col justify-center items-center">
-      <main className="w-[580px] h-[960px] py-4 bg-white flex flex-col justify-center  rounded-2xl items-center  ">
-        <header className="w-[580px] flex justify-end items-center pr-4 pb-4 ">
-          <Button variant="outline" size="icon" className="rounded-full">
-            <X className=" h-5 w-5" />
-          </Button>
-        </header>
-        <div className=" w-[500px] h-full  flex flex-col justify-center  items-center">
-          <div className="size-[200px]  ">
+  const renderResultContent = () => {
+    return (
+      <div className="space-y-4 mt-10">
+        <div className="flex flex-col justify-center items-center gap-6">
+          <div className="size-[200px]">
             <Image
               src={isWin ? '/trophy.png' : '/warning.png'}
               alt={isWin ? 'trophy' : 'lost'}
@@ -36,8 +43,8 @@ const GameResultPopup: React.FC<GameResultProps> = ({
               className="w-full h-full"
             />
           </div>
-          <h1 className="font-semibold text-[32px]  text-[#000000] mb-4">
-            <span className="font-bold text-[#70E3C7]">368 Points</span> -{' '}
+          <p className="font-bold text-[32px]">
+            <span className="text-[#70E3C7]">368 Points</span> -{' '}
             {isWin && isMultiplayer ? (
               <span>You won🥇</span>
             ) : isWin ? (
@@ -45,99 +52,110 @@ const GameResultPopup: React.FC<GameResultProps> = ({
             ) : (
               <span>You lost😞</span>
             )}
-          </h1>
-
-          {/* article for signle player or multiple player */}
-          {!isMultiplayer ? (
-            <article className="flex flex-col gap-3 w-[500px] text-[#202020] font-medium text-md ">
-              {/* article for a single player */}
-              <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Scores</p>
-                <h5 className="">10/10 (100%)</h5>
-              </div>
-              <div className="flex items-center justify-between h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Odds</p>
-                <h5 className="flex items-center gap-2">
-                  10 odds (Get everything right){' '}
-                  <span>
-                    {isWin ? (
-                      <FaCircleCheck className=" text-green-600 size-5" />
-                    ) : (
-                      <MdCancel className="text-red-600 size-5" />
-                    )}
-                  </span>
-                </h5>
-              </div>
-              <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Wager Amount</p>
-                <h5 className="">10,000 STRK (100 USD)</h5>
-              </div>
-
-              {isWin && (
-                <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
-                  <p className="font-normal text-[#A4ACB4]">You Win</p>
-
-                  <h5 className=" font-semibold text-[#9747FF]">
-                    80,000 STRK (800 USD)
-                  </h5>
-                </div>
-              )}
-            </article>
-          ) : (
-            <article className="flex flex-col gap-3 w-[500px] text-[#202020] font-medium text-md ">
-              {/* article for a muitlplayer */}
-              <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Winner</p>
-                <h5 className="">
-                  {isWin ? <span>You</span> : <span>theXaxxo (678 Pts)</span>}
-                </h5>
-              </div>
-              <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Prize Won</p>
-
-                <h5 className=" font-semibold text-[#9747FF]">
-                  80,000 STRK (800 USD)
-                </h5>
-              </div>
-              <div className="flex justify-between items-center h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Wager Amount</p>
-                <h5 className="">10,000 STRK (100 USD)</h5>
-              </div>
-              <div className="flex items-center justify-between h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Second Place</p>
-                <h5 className="flex items-center gap-2">
-                  {isWin ? <span>theXaxxo (345 Pts)</span> : <span>You</span>}
-                </h5>
-              </div>
-              <div className="flex items-center justify-between h-12 py-3 border-b border-gray-200">
-                <p className="font-normal text-[#A4ACB4]">Third Place</p>
-                <h5 className="flex items-center gap-2">theXaxxo (345 Pts)</h5>
-              </div>
-            </article>
-          )}
-          {/* button */}
-         <main className="flex items-end justify-between w-full  h-full ">
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-[238px] px-2 py-6  border-[#9747FF] h-[72px] flex justify-center items-center rounded-full font-medium text-md  text-[#9747FF] "
-            >
-              Share
-            </Button>
-            <Button
-              variant="purple"
-              size="lg"
-              className="w-[238px] px-2 py-6  h-[72px] flex justify-center items-center rounded-full font-medium text-md  text-white "
-            >
-              Claim Earning
-            </Button>
-          </main>
+          </p>
         </div>
-      </main>
-    </section>
 
-    
-    </>
+        {!isMultiplayer ? (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Score</span>
+              <span className="font-medium">
+                {`${gameStore.score} / ${gameStore.maxRounds}`} (
+                {percent.toFixed()}%)
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Odds</span>
+              <span className="font-medium flex items-center gap-2">
+                {gameStore.gameConfig.odds} odds (Get everything right){' '}
+                <span>
+                  {isWin ? (
+                    <FaCircleCheck className="text-green-600 size-5" />
+                  ) : (
+                    <MdCancel className="text-red-600 size-5" />
+                  )}
+                </span>
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Wager Amount</span>
+              <span className="font-medium">
+                {gameStore.gameConfig.wagerAmount} STRK
+              </span>
+            </div>
+            {isWin && (
+              <div className="flex justify-between items-center border-b py-[12px]">
+                <span className="text-gray-600">You Win</span>
+                <span className="font-medium text-[#9747FF]">
+                  {gameStore.potentialWin} STRK
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Winner</span>
+              <span className="font-medium">
+                {isWin ? 'You' : 'theXaxxo (678 Pts)'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Prize Won</span>
+              <span className="font-medium text-[#9747FF]">
+                80,000 STRK (800 USD)
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Wager Amount</span>
+              <span className="font-medium">10,000 STRK (100 USD)</span>
+            </div>
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Second Place</span>
+              <span className="font-medium">
+                {isWin ? 'theXaxxo (345 Pts)' : 'You'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b py-[12px]">
+              <span className="text-gray-600">Third Place</span>
+              <span className="font-medium">theXaxxo (345 Pts)</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderFooter = () => {
+    return (
+      <div className="flex gap-4 justify-center mt-10 w-full">
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-[238px] px-2 py-6 border-[#9747FF] h-[72px] flex justify-center items-center rounded-full font-medium text-md text-[#9747FF]"
+        >
+          Share
+        </Button>
+        <Button
+          variant="purple"
+          size="lg"
+          className="w-[238px] px-2 py-6 h-[72px] flex justify-center items-center rounded-full font-medium text-md text-white"
+        >
+          Claim Earning
+        </Button>
+      </div>
+    );
+  };
+
+  return (
+    <Modal
+      isOpen={isModalOpen}
+      onClose={handleCloseModal}
+      title=""
+      footerContent={renderFooter()}
+    >
+      {renderResultContent()}
+    </Modal>
   );
 };
 
