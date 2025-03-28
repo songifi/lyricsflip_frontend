@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
 export const LyricCard = ({
   lyrics,
 }: {
@@ -42,13 +41,13 @@ export const LyricCard = ({
     };
   }, [isFlipped]);
 
-  // CSS for the noise overlay 
+  // CSS for the noise overlay
   const noiseOverlayStyle = {
     backgroundImage: "url('/Noise.png')",
     backgroundSize: 'cover',
     backgroundBlendMode: 'overlay',
     opacity: 0.4,
-    position: 'absolute' as 'absolute',
+    position: 'absolute' as const,
     top: 0,
     left: 0,
     right: 0,
@@ -58,7 +57,7 @@ export const LyricCard = ({
 
   // Content style to ensure it's above the overlay
   const contentStyle = {
-    position: 'relative' as 'relative',
+    position: 'relative' as const,
     zIndex: 2,
   };
 
@@ -78,7 +77,6 @@ export const LyricCard = ({
             <div className="bg-white rounded-3xl shadow-md overflow-hidden h-full">
               <div className="rounded-xl overflow-hidden h-full flex flex-col relative">
                 <div className="bg-purplePrimary3 p-lg flex-1 flex flex-col relative">
-                  
                   {/* Content container */}
                   <div style={contentStyle} className="flex-1 flex flex-col">
                     {/* Large Centered Teal geometric shape */}
@@ -105,7 +103,6 @@ export const LyricCard = ({
             <div className="bg-white rounded-3xl shadow-md overflow-hidden h-full">
               <div className="rounded-xl overflow-hidden h-full flex flex-col relative">
                 <div className="bg-tealPrimary1 p-lg flex-1 flex flex-col relative">
-                  
                   {/* Content container */}
                   <div style={contentStyle} className="flex-1 flex flex-col">
                     {/* Top right icon */}
