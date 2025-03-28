@@ -28,7 +28,7 @@ describe('StatisticsPanel', () => {
       isPlaying: true,
     }));
 
-    render(<StatisticsPanel time="0:05" potWin="1000 STRK" scores={100} />);
+    render(<StatisticsPanel time="0:05" potWin="1000 STRK" scores={'100'} />);
 
     // Update the mock to simulate timer expiration
     mockUseGameTimer.mockImplementation(() => ({
@@ -57,11 +57,11 @@ describe('StatisticsPanel', () => {
     }));
 
     const { rerender } = render(
-      <StatisticsPanel time="0:30" potWin="1000 STRK" scores={100} />,
+      <StatisticsPanel time="0:30" potWin="1000 STRK" scores={'100'} />,
     );
 
     // Check timer has green color when game is playing
-    const timerElement = screen.getByText('0:30');
+    const timerElement = screen.getByText('00:30');
     // Instead of toHaveClass, check the class attribute directly
     expect(timerElement.getAttribute('class')).toContain('text-green-500');
 
@@ -75,7 +75,7 @@ describe('StatisticsPanel', () => {
     }));
 
     // Rerender with new state
-    rerender(<StatisticsPanel time="0:30" potWin="1000 STRK" scores={100} />);
+    rerender(<StatisticsPanel time="0:30" potWin="1000 STRK" scores={'100'} />);
 
     // Check timer has red color when game is not playing
     expect(timerElement.getAttribute('class')).toContain('text-red-500');
