@@ -1,18 +1,25 @@
 'use client';
 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/atoms/sheet';
 import type { ReactNode } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/atoms/dialog';
 import { Button } from '../atoms/button';
 
 interface ModalProps {
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  description?: string
-  children: ReactNode
-  footerContent?: ReactNode
-  primaryActionLabel?: string
-  onPrimaryAction?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description?: string;
+  children: ReactNode;
+  footerContent?: ReactNode;
+  primaryActionLabel?: string;
+  onPrimaryAction?: () => void;
 }
 
 export function Modal({
@@ -34,25 +41,31 @@ export function Modal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose} >
-      <DialogContent className=" sm:max-w-md  bg-amber-500 ]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
-        </DialogHeader>
-        <div className="py-4 ">{children}</div>
-        
-       
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent
+        side="right"
+        className="sm:max-w-[580px] top-8 bottom-8 right-8 w-[calc(100%-64px)] h-[calc(100%-64px)] rounded-lg overflow-y-auto"
+      >
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          {description && (
+            <SheetDescription className="text-sm">
+              {description}
+            </SheetDescription>
+          )}
+        </SheetHeader>
+        <div className="py-4">{children}</div>
 
-
-        {footerContent ? (
-          footerContent
-        ) : (
-          <Button variant="purple" size="full" onClick={handlePrimaryAction}>
-            {primaryActionLabel}
-          </Button>
-        )}
-      </DialogContent>
-    </Dialog>
+        <SheetFooter className='w-full'>
+          {footerContent ? (
+            footerContent
+          ) : (
+            <Button variant="purple" size="full" onClick={handlePrimaryAction}>
+              {primaryActionLabel}
+            </Button>
+          )}
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
