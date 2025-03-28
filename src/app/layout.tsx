@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
-import localFont from 'next/font/local';
+"use client"
 import Navbar, { MobileNav } from '@/components/molecules/navbar';
-import { metadata } from "./metadata";
 import { QueryClientProvider } from '@tanstack/react-query';
+import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { queryClient } from '../lib/react-query';
+import './globals.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -22,7 +21,6 @@ const interV = localFont({
   variable: '--font-interv',
 });
 
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,9 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${interV.variable} antialiased`}
       >
         <QueryClientProvider client={queryClient}>
-        <Navbar />
+          <Navbar />
           {children}
-        <MobileNav />
+          <MobileNav />
         </QueryClientProvider>
       </body>
     </html>

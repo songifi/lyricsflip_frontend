@@ -1,7 +1,7 @@
 interface StatisticsPanelProps {
     timeLeft: string
     potWin: string
-    scores: number
+    scores: string
   }
   
   export function StatisticsPanel({ timeLeft, potWin, scores }: StatisticsPanelProps) {

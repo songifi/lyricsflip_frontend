@@ -7,14 +7,15 @@ import { Info } from 'lucide-react';
 import { Modal } from './modal';
 
 export function GameModal() {
-  const { isOpen, closeModal } = useModalStore();
+  const { isOpen, closeModal, modalType } = useModalStore();
   const [genre, setGenre] = useState<string>('');
   const [difficulty, setDifficulty] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
+  const isModalOpen = isOpen && modalType === 'game';
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen={isModalOpen}
       onClose={closeModal}
       title="Quick Game"
       description="Quisque ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum."

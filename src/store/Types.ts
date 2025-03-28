@@ -6,6 +6,27 @@ export interface GameState {
   timeLeft: number;
   isTimerRunning: boolean;
 }
+
+export interface WagerDetails {
+  genre: string;
+  difficulty: string;
+  duration: string;
+  odds: string;
+  wagerAmount: string;
+  potentialWin: string;
+}
+
+export interface LyricData {
+  text: string;
+  title: string;
+  artist: string;
+  options: SongOption[];
+}
+
+export interface SongOption {
+  title: string;
+  artist: string;
+}
   
 export interface GameActions {
   incrementScore: (by: number) => void;
