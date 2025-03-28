@@ -3,6 +3,8 @@ export interface GameState {
   level: number;
   isPlaying: boolean;
   lastPlayed: Date | null;
+  timeLeft: number;
+  isTimerRunning: boolean;
 }
   
 export interface GameActions {
@@ -10,6 +12,10 @@ export interface GameActions {
   incrementLevel: () => void;
   startGame: () => void;
   endGame: () => void;
+  startTimer: () => void;
+  stopTimer: () => void;
+  resetTimer: (newTime?: number) => void;
+  tickTimer: () => void; 
 }
   
 // User slice types
