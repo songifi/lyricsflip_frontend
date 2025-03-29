@@ -4,8 +4,7 @@ import './globals.css';
 import localFont from 'next/font/local';
 import Navbar, { MobileNav } from '@/components/molecules/navbar';
 import { metadata } from "./metadata";
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '../lib/react-query';
+import { ClientProvider } from '@/components/providers/client-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,11 +32,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${interV.variable} antialiased`}
       >
-        <QueryClientProvider client={queryClient}>
-        <Navbar />
+        <ClientProvider>
+          <Navbar />
           {children}
-        <MobileNav />
-        </QueryClientProvider>
+          <MobileNav />
+        </ClientProvider>
       </body>
     </html>
   );
