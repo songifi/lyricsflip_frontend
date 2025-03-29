@@ -63,7 +63,7 @@ export default function WaitingForOpponent() {
       <div className="w-full max-w-[580px] min-h-[960px] h-full bg-white rounded-[16px] border-[1.5px] border-[#DBE2E8] p-[32px]">
         <div className="flex justify-end">
           <p
-            className="hover:cursor-pointer w-fit border border-[#DBE1E7] rounded-full"
+            className="hover:cursor-pointer p-1 w-fit border border-[#DBE1E7] rounded-full"
             onClick={handleClose}
           >
             <X size={16} color="#090909" />
@@ -81,7 +81,7 @@ export default function WaitingForOpponent() {
 
         {/* Invite Code Section */}
         <div className="flex justify-center items-center space-x-3 my-5">
-          <h1 className="text-[48px] font-[800]">{inviteCode}</h1>
+          <h1 className="sm:text-[48px] text-[30px] font-[800]">{inviteCode}</h1>
           <span
             className="hover:cursor-pointer w-fit relative"
             onClick={handleCopyCode}
