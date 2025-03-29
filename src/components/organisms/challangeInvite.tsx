@@ -59,7 +59,7 @@ export default function ChallengeInvite() {
       <div className="w-full max-w-[580px] min-h-[960px] h-full bg-white rounded-[16px] border-[1.5px] border-[#DBE2E8] p-[32px]">
         <div className="flex justify-end">
           <p
-            className="hover:cursor-pointer w-fit border border-[#DBE1E7] rounded-full"
+            className="hover:cursor-pointer w-fit p-1 border border-[#DBE1E7] rounded-full"
             onClick={handleClose}
           >
             <X size={16} color="#090909" />
@@ -78,7 +78,7 @@ export default function ChallengeInvite() {
         </div>
 
         <div className="flex justify-center items-center space-x-3 my-5">
-          <h1 aria-label="invite Code" className="text-[48px] font-[800]">
+          <h1 aria-label="invite Code" className="sm:text-[48px] text-[30px] font-[800]">
             {inviteCode}
           </h1>
           <span
