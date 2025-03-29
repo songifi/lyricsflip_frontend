@@ -20,7 +20,7 @@ export function WagerSummaryModal() {
     console.log('Starting wager game...');
   };
 
-  const isModalOpen = isOpen && modalType === 'wager';
+  const isModalOpen = isOpen && modalType === 'wager' as ModalType;
 
   const modalContent = (
     <div className="space-y-4">
@@ -81,8 +81,8 @@ export function WagerSummaryModal() {
       title="Wager Summary"
       primaryActionLabel="Start Game"
       onPrimaryAction={handleStartGame}
-      bgColor="bg-white"
-      children={modalContent}
-    />
+    >
+      {modalContent}
+    </Modal>
   );
 } 

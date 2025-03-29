@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { GameCard } from '../molecules/game-mode-card';
+import ChallengeModal from '../ChallengeModal'
 
 export type GameOption = {
   id: string;
@@ -66,6 +68,17 @@ interface GameOptionsProps {
 }
 
 export function GameOptions({ onSelectGame }: GameOptionsProps) {
+  const [isChallengeModalOpen, setChallengeModalOpen] = useState(false);
+
+  const handleSelectGame = (gameId: string) => {
+    if (gameId === 'challenge') {
+      setChallengeModalOpen(true); // Open the ChallengeModal
+    }
+    if (onSelectGame) {
+      onSelectGame(gameId);
+    }
+  };
+
   return (
     <div>
       <div className="grid gap-5 sm:grid-cols-2 w-full">
@@ -73,10 +86,15 @@ export function GameOptions({ onSelectGame }: GameOptionsProps) {
           <GameCard
             key={game.id}
             game={game}
-            onSelect={onSelectGame ? () => onSelectGame(game.id) : undefined}
+            onSelect={() => handleSelectGame(game.id)}
           />
         ))}
       </div>
+
+      {/* Render the ChallengeModal if isChallengeModalOpen is true */}
+      {isChallengeModalOpen && (
+        <ChallengeModal isOpen={isChallengeModalOpen} onClose={() => setChallengeModalOpen(false)} />
+      )}
     </div>
   );
 }
