@@ -1,9 +1,9 @@
 "use client"
 import Navbar, { MobileNav } from '@/components/molecules/navbar';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { metadata } from "./metadata";
+import { ClientProvider } from '@/components/providers/client-provider';
 import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
-import { queryClient } from '../lib/react-query';
 import './globals.css';
 
 const geistSans = Geist({
@@ -31,11 +31,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${interV.variable} antialiased`}
       >
-        <QueryClientProvider client={queryClient}>
+        <ClientProvider>
           <Navbar />
           {children}
           <MobileNav />
-        </QueryClientProvider>
+        </ClientProvider>
       </body>
     </html>
   );
