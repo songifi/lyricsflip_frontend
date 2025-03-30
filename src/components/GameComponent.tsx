@@ -8,7 +8,7 @@ const GameComponent = () => {
     game: { score, level, isPlaying },
     user: { username, preferences: { theme } },
   } = useStore();
-  
+
   // Destructuring actions from the store
   const { 
     game: { incrementScore, startGame, endGame },
