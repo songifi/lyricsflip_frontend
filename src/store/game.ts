@@ -6,6 +6,7 @@ interface GameState {
   potentialWin: number;
   currentRound: number;
   maxRounds: number;
+  gameStatus: 'idle' | 'playing' | 'ended';
   gameConfig: {
     genre: string;
     difficulty: string;
@@ -19,8 +20,9 @@ interface GameState {
   decreaseTime: () => void;
   resetGame: () => void;
   startGame: (config: GameState['gameConfig']) => void;
+  endGame: () => void;
+  setGameStatus: (status: GameState['gameStatus']) => void;
 }
-
 
 export const useGameStore = create<GameState>((set) => ({
   score: 0,
@@ -28,6 +30,7 @@ export const useGameStore = create<GameState>((set) => ({
   potentialWin: 0,
   currentRound: 0,
   maxRounds: 5, // Increased rounds
+  gameStatus: 'idle',
   gameConfig: {
     genre: '',
     difficulty: '',
@@ -58,6 +61,7 @@ export const useGameStore = create<GameState>((set) => ({
       potentialWin: 0,
       currentRound: 0,
       lastGuessResult: null,
+      gameStatus: 'idle',
       gameConfig: {
         genre: '',
         difficulty: '',
@@ -79,6 +83,11 @@ export const useGameStore = create<GameState>((set) => ({
       score: 0,
       currentRound: 0,
       lastGuessResult: null,
+      gameStatus: 'playing',
       gameConfig: config,
     }),
+
+  endGame: () => set({ gameStatus: 'ended' }),
+
+  setGameStatus: (status) => set({ gameStatus: status }),
 }));
