@@ -27,13 +27,12 @@ export function SongOptions({
         let buttonClasses =
           'text-left p-4 rounded-lg transition-all duration-200 ';
 
-        if (isSelected) {
-          buttonClasses += isCorrect
-            ? 'bg-green-100 border-2 border-green-500'
-            : 'bg-red-100 border-2 border-red-500';
+        if (isCorrect) {
+          buttonClasses += 'bg-green-100 border-2 border-green-500';
+        } else if (isSelected) {
+          buttonClasses += 'bg-red-100 border-2 border-red-500';
         } else {
-          buttonClasses +=
-            'bg-purple-50 border border-purple-100 hover:border-purple-300';
+          buttonClasses += 'bg-purple-50 border border-purple-100 hover:border-purple-300';
         }
 
         return (

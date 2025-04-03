@@ -6,6 +6,7 @@ interface GameState {
   potentialWin: number;
   currentRound: number;
   maxRounds: number;
+  odds:number;
   gameStatus: 'idle' | 'playing' | 'ended';
   gameConfig: {
     genre: string;
@@ -30,6 +31,7 @@ export const useGameStore = create<GameState>((set) => ({
   potentialWin: 0,
   currentRound: 0,
   maxRounds: 5, // Increased rounds
+  odds:3, //default wrong attempts
   gameStatus: 'idle',
   gameConfig: {
     genre: '',

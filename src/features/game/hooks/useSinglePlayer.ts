@@ -3,6 +3,7 @@ import { LyricData, SongOption } from '@/store';
 import { useGameStore } from '@/store/game';
 import { useEffect, useState } from 'react';
 
+
 export const useSinglePlayer = (genre: string) => {
   const gameStore = useGameStore();
 
@@ -10,6 +11,7 @@ export const useSinglePlayer = (genre: string) => {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [selectedOption, setSelectedOption] = useState<SongOption | null>(null);
   const [correctOption, setCorrectOption] = useState<SongOption | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0)
   const [gameResult, setGameResult] = useState<{
     isWin: boolean;
     isMultiplayer: boolean;
@@ -43,9 +45,16 @@ export const useSinglePlayer = (genre: string) => {
 
     if (isCorrect) {
       gameStore.increaseScore();
+      setWrongAttempts(0); 
     } else {
-      endGame(false);
-      return;
+      setWrongAttempts((prev) => prev + 1); 
+
+      // End the game if max wrong attempts are reached
+      if (wrongAttempts >= gameStore.odds) {
+        gameStore.endGame();
+        endGame(false);
+        return;
+      }
     }
 
     setTimeout(() => {

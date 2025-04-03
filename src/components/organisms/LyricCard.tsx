@@ -116,12 +116,20 @@ export const LyricCard = ({
                     </div>
 
                     {/* Lyric text */}
-                    <p className="text-purpleSecondary1 text-center text-md font-medium mb-8 flex-grow flex items-center justify-center whitespace-pre-line">
+                    <p
+                      className={`text-purpleSecondary1 text-center text-md font-medium mb-8 flex-grow flex items-center justify-center whitespace-pre-line transition-transform duration-300 ${
+                        isFlipped ? 'rotate-y-180' : ''
+                      }`}
+                    >
                       {currentLyric.text}
                     </p>
 
                     {/* Footer */}
-                    <p className="text-center text-sm2 pb-2 font-medium text-purplePrimary1">
+                    <p
+                      className={`text-center text-sm2 pb-2 font-medium text-purplePrimary1 transition-transform duration-300 ${
+                        isFlipped ? 'rotate-y-180' : ''
+                      }`}
+                    >
                       LyricFlip...join the fun🎶🩵
                     </p>
                   </div>
