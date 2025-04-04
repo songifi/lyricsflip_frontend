@@ -68,6 +68,8 @@ export function WagerModal() {
   };
 
   const handleStartGame = () => {
+    console.log("i am before startGame");
+    
     startGame({
       genre: wagerDetails.genre,
       difficulty: wagerDetails.difficulty,

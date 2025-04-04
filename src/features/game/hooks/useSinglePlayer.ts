@@ -50,7 +50,7 @@ export const useSinglePlayer = (genre: string) => {
       setWrongAttempts((prev) => prev + 1); 
 
       // End the game if max wrong attempts are reached
-      if (wrongAttempts >= gameStore.odds) {
+      if (wrongAttempts >= gameStore.gameConfig.odds) {
         gameStore.endGame();
         endGame(false);
         return;
