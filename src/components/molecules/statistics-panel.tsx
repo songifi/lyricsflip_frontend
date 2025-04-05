@@ -31,7 +31,7 @@ export function StatisticsPanel({
   }, []);
 
   useEffect(() => {
-    if (timeLeft >= 0) {
+    if (timeLeft > 0) {
       setRemainingTime(formatTime(parseInt(timeLeft.toString(), 10)));
     } else {
       endGame();

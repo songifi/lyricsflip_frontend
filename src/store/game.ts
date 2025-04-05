@@ -6,6 +6,7 @@ interface GameState {
   potentialWin: number;
   currentRound: number;
   maxRounds: number;
+  gameStatus: 'idle' | 'playing' | 'ended';
   gameConfig: {
     genre: string;
     difficulty: string;
@@ -19,15 +20,17 @@ interface GameState {
   decreaseTime: () => void;
   resetGame: () => void;
   startGame: (config: GameState['gameConfig']) => void;
+  endGame: () => void;
+  setGameStatus: (status: GameState['gameStatus']) => void;
 }
-
 
 export const useGameStore = create<GameState>((set) => ({
   score: 0,
-  timeLeft: 300, // Default 5 minutes
+  timeLeft: 300,
   potentialWin: 0,
   currentRound: 0,
-  maxRounds: 5, // Increased rounds
+  maxRounds: 5,
+  gameStatus: 'idle',
   gameConfig: {
     genre: '',
     difficulty: '',
@@ -58,6 +61,7 @@ export const useGameStore = create<GameState>((set) => ({
       potentialWin: 0,
       currentRound: 0,
       lastGuessResult: null,
+      gameStatus: 'idle',
       gameConfig: {
         genre: '',
         difficulty: '',
@@ -75,10 +79,32 @@ export const useGameStore = create<GameState>((set) => ({
           ? 300
           : config.duration === '10 mins'
             ? 600
-            : 900, // 15 min
+            : 900,
       score: 0,
       currentRound: 0,
       lastGuessResult: null,
+      gameStatus: 'playing',
       gameConfig: config,
     }),
+
+  endGame: () => set({ gameStatus: 'ended' }),
+
+  setGameStatus: (status) => set({ gameStatus: status }),
 }));
+
+// Export startGameTimer as a separate function
+let timer: NodeJS.Timeout | null = null;
+export const startGameTimer = () => {
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    useGameStore.getState().decreaseTime();
+  }, 1000);
+};
+
+// Stop the timer when needed (e.g., on game end)
+export const stopGameTimer = () => {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+};
