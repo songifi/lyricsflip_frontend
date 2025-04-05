@@ -22,7 +22,7 @@ export default function SinglePlayerGame() {
     correctOption,
     handleSongSelect,
     gameResult,
-    isCardFlipped, // Pass flip state
+    isCardFlipped,
   } = useSinglePlayer(genre);
 
   useEffect(() => {
@@ -82,12 +82,12 @@ export default function SinglePlayerGame() {
                 artist: currentLyric.artist,
               },
             ]}
-            isFlipped={isCardFlipped} // Pass flip state
+            isFlipped={isCardFlipped}
           />
         </div>
         <div className="lg:col-start-3 lg:col-span-1 order-2 lg:order-3">
           <StatisticsPanel
-            time={`${gameStore.timeLeft}`} // Use global time since no per-question timer
+            time={`${gameStore.timeLeft}`}
             potWin={`${gameStore.potentialWin} STRK`}
             scores={`${gameStore.score} / ${gameStore.maxRounds}`}
           />

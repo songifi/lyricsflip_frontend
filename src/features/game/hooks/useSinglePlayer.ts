@@ -1,7 +1,16 @@
-import { MOCK_LYRICS } from '@/mock/mock'; // Replace GENRE_LYRICS with mock data
+import { MOCK_LYRICS } from '@/mock/mock';
 import { LyricData, SongOption } from '@/store';
-import { useGameStore } from '@/store/game';
+import { useGameStore, stopGameTimer } from '@/store/game';
 import { useEffect, useState } from 'react';
+
+const shuffleArray = <T>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 export const useSinglePlayer = (genre: string) => {
   const gameStore = useGameStore();
@@ -14,33 +23,43 @@ export const useSinglePlayer = (genre: string) => {
     isWin: boolean;
     isMultiplayer: boolean;
   } | null>(null);
-  const [isCardFlipped, setIsCardFlipped] = useState(false); // New: Control card flip
+  const [isCardFlipped, setIsCardFlipped] = useState(false);
 
+  // Start game and timer
   useEffect(() => {
     if (genre && gameStore.gameStatus === 'playing') {
       startNewRound();
       setIsGameStarted(true);
-      setIsCardFlipped(true); // Flip card to show lyrics when game starts
+      setIsCardFlipped(true);
     }
+    return () => {
+      stopGameTimer(); // Cleanup timer on unmount
+    };
   }, [genre, gameStore.gameStatus]);
 
+  // Monitor timeLeft and end game only once
   useEffect(() => {
-    if (gameStore.timeLeft <= 0 || gameStore.gameStatus === 'ended') {
+    if (gameStore.timeLeft <= 0 && !gameResult && isGameStarted) {
       endGame(false);
     }
-  }, [gameStore.timeLeft, gameStore.gameStatus]);
+  }, [gameStore.timeLeft, gameResult, isGameStarted]);
 
   const startNewRound = () => {
+    if (gameStore.currentRound >= gameStore.maxRounds) {
+      endGame(true); // End if max rounds reached
+      return;
+    }
     const randomLyric =
       MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
-    setCurrentLyric(randomLyric);
+    const shuffledOptions = shuffleArray(randomLyric.options);
+    setCurrentLyric({ ...randomLyric, options: shuffledOptions });
     setSelectedOption(null);
     setCorrectOption(null);
-    setIsCardFlipped(true); // Show lyrics for new round
+    setIsCardFlipped(true);
   };
 
   const handleSongSelect = (option: SongOption) => {
-    if (!currentLyric || selectedOption) return;
+    if (!currentLyric || selectedOption || gameResult) return; // Prevent selection after game end
 
     setSelectedOption(option);
     setCorrectOption({
@@ -55,35 +74,42 @@ export const useSinglePlayer = (genre: string) => {
       gameStore.increaseScore();
       gameStore.setGuessResult('correct');
       setWrongAttempts(0);
+
+      // Check if this is the last round
+      if (gameStore.currentRound + 1 >= gameStore.maxRounds) {
+        setTimeout(() => {
+          setIsCardFlipped(false);
+          setTimeout(() => endGame(true), 500); // End after feedback
+        }, 2000);
+        return;
+      }
     } else {
       gameStore.setGuessResult('incorrect');
       setWrongAttempts(newWrongAttempts);
       if (newWrongAttempts >= gameStore.gameConfig.odds) {
-        gameStore.endGame();
-        endGame(false);
+        setTimeout(() => {
+          setIsCardFlipped(false);
+          setTimeout(() => endGame(false), 500); // End after feedback
+        }, 2000);
         return;
       }
     }
 
-    // Flip card back and move to next question after feedback
+    // Move to next round if not ended
     setTimeout(() => {
-      setIsCardFlipped(false); // Flip back to shape
-      setTimeout(() => {
-        if (gameStore.currentRound >= gameStore.maxRounds) {
-          endGame(true);
-        } else {
-          startNewRound(); // Load next question and flip card again
-        }
-      }, 500); // Short delay before next question
-    }, 1000); // 1s feedback delay
+      setIsCardFlipped(false);
+      setTimeout(() => startNewRound(), 500);
+    }, 2000);
   };
 
   const endGame = (didWin: boolean) => {
+    if (gameResult) return; // Ensure called only once
     setGameResult({
       isWin: didWin,
       isMultiplayer: false,
     });
     gameStore.endGame();
+    stopGameTimer();
   };
 
   const resetGame = () => {
@@ -103,6 +129,6 @@ export const useSinglePlayer = (genre: string) => {
     handleSongSelect,
     gameResult,
     resetGame,
-    isCardFlipped, // Expose flip state
+    isCardFlipped,
   };
 };
