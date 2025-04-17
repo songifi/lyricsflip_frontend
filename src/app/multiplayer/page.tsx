@@ -117,7 +117,7 @@ export default function MultiplayerPage() {
           <StatisticsPanel
             time={roomData?.timeLeft || '00:00'}
             potWin={roomData?.potWin || '0 STRK'}
-            scores={roomData?.scores || 0}
+            scores={String(roomData?.scores || 0)}
           />
         </div>
       </div>
