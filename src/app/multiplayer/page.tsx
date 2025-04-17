@@ -108,6 +108,7 @@ export default function MultiplayerPage() {
                 artist: roomData?.currentLyric?.artist || fallbackLyric.artist,
               },
             ]}
+            isFlipped={false}
           />
         </div>
 
