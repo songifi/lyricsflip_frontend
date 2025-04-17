@@ -39,6 +39,10 @@ const BadgeModal = ({ onClose }: BadgeModalProps) => {
             You just earned yourself a new badge. "Music Connoisseur". 
             Well done 👏
           </p>
+
+          <p className="text-sm text-gray-500">
+            &quot;You&apos;ve unlocked a new badge!&quot;
+          </p>
         </div>
 
         {/* Buttons */}

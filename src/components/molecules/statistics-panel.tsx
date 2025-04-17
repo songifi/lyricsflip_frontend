@@ -21,7 +21,7 @@ export function StatisticsPanel({
   const [remainingTime, setRemainingTime] = useState<string>(time);
   const [showGameResult, setShowGameResult] = useState<boolean>(false);
 
-  const { timeLeft, startTimer, resetTimer, endGame, isPlaying } =
+  const { timeLeft, startTimer, resetTimer, endGame, isPlaying, isTimerRunning } =
     useGameTimer();
 
   useEffect(() => {
@@ -38,6 +38,20 @@ export function StatisticsPanel({
       setShowGameResult(true);
     }
   }, [timeLeft]);
+
+  useEffect(() => {
+    if (time === '00:00') {
+      endGame();
+    }
+  }, [time, endGame]);
+
+  useEffect(() => {
+    if (isTimerRunning) {
+      startTimer();
+    } else {
+      resetTimer();
+    }
+  }, [isTimerRunning, startTimer, resetTimer]);
 
   return (
     <div className="relative">

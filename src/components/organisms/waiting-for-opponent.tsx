@@ -1,5 +1,5 @@
 import { Copy, Lightbulb, X } from 'lucide-react';
-import LoadingSpinner from '../atoms/loading-spiner';
+import LoadingSpinner from '../atoms/loading-spinner';
 import { useState, useEffect } from 'react';
 
 export default function WaitingForOpponent() {

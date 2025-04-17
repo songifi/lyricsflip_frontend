@@ -160,6 +160,7 @@ export function useMultiplayerRoom({
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCardFlipped, setIsCardFlipped] = useState(false);
 
   // Always use mock WebSocket for now to ensure it works
   const [useMockWebSocket] = useState(true);
@@ -289,6 +290,12 @@ export function useMultiplayerRoom({
     };
   }, [roomId, playerName]); // Removed useMockWebSocket from dependencies
 
+  useEffect(() => {
+    if (roomData?.currentLyric) {
+      setIsCardFlipped(true);
+    }
+  }, [roomData]);
+
   // Function to select a song
   const selectSong = useCallback(
     (songIndex: number) => {
@@ -339,5 +346,6 @@ export function useMultiplayerRoom({
     error,
     selectSong,
     leaveRoom,
+    isCardFlipped,
   };
 }
