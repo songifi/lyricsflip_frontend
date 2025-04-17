@@ -1,5 +1,5 @@
 import { Copy, Lightbulb, X } from 'lucide-react';
-import LoadingSpinner from '../atoms/loading-spiner';
+// import LoadingSpinner from '../atoms/loading-spiner';
 import { useState, useEffect } from 'react';
 
 export default function WaitingForOpponent() {
@@ -125,7 +125,7 @@ export default function WaitingForOpponent() {
 
         {/* Loading and Status Section */}
         <div className="w-full flex flex-col justify-center items-center gap-[8px] mt-20">
-          <LoadingSpinner />
+          {/* <LoadingSpinner /> */}
           <div className="flex flex-col gap-[8px] justify-center w-full items-center">
             <span className="text-[20px] font-[500] text-[#000000]">
               {playersJoined === totalPlayers

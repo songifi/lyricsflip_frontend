@@ -39,14 +39,6 @@ export const useGameTimer = (): UseGameTimerReturn => {
     return () => clearInterval(intervalId);
   }, [isTimerRunning, isPlaying, tickTimer]);
 
-  // Optional: Auto-start timer when game starts
-  // useEffect(() => {
-  // if (isPlaying) {
-  // resetTimer();
-  // startTimer();
-  // }
-  // }, [isPlaying, resetTimer, startTimer]);
-
   return {
     timeLeft,
     isTimerRunning,
