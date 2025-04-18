@@ -23,6 +23,7 @@ export default function SinglePlayerGame() {
     handleSongSelect,
     gameResult,
     isCardFlipped,
+    nextLyric,
   } = useSinglePlayer(genre);
 
   useEffect(() => {
@@ -81,6 +82,15 @@ export default function SinglePlayerGame() {
                 title: currentLyric.title,
                 artist: currentLyric.artist,
               },
+              nextLyric ? {
+                text: nextLyric.text,
+                title: nextLyric.title,
+                artist: nextLyric.artist,
+              } : {
+                text: currentLyric.text,
+                title: currentLyric.title,
+                artist: currentLyric.artist,
+              }
             ]}
             isFlipped={isCardFlipped}
           />

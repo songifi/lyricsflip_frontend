@@ -15,6 +15,7 @@ const shuffleArray = <T>(array: T[]): T[] => {
 export const useSinglePlayer = (genre: string) => {
   const gameStore = useGameStore();
   const [currentLyric, setCurrentLyric] = useState<LyricData | null>(null);
+  const [nextLyric, setNextLyric] = useState<LyricData | null>(null);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [selectedOption, setSelectedOption] = useState<SongOption | null>(null);
   const [correctOption, setCorrectOption] = useState<SongOption | null>(null);
@@ -28,9 +29,12 @@ export const useSinglePlayer = (genre: string) => {
   // Start game and timer
   useEffect(() => {
     if (genre && gameStore.gameStatus === 'playing') {
-      startNewRound();
+      const firstLyric = MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
+      const secondLyric = MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
+      setCurrentLyric({ ...firstLyric, options: shuffleArray(firstLyric.options) });
+      setNextLyric({ ...secondLyric, options: shuffleArray(secondLyric.options) });
       setIsGameStarted(true);
-      setIsCardFlipped(true);
+      setIsCardFlipped(false);
     }
     return () => {
       stopGameTimer(); // Cleanup timer on unmount
@@ -55,7 +59,8 @@ export const useSinglePlayer = (genre: string) => {
     setCurrentLyric({ ...randomLyric, options: shuffledOptions });
     setSelectedOption(null);
     setCorrectOption(null);
-    setIsCardFlipped(true);
+    // Flip card to show new lyrics
+    setIsCardFlipped(!isCardFlipped);
   };
 
   const handleSongSelect = (option: SongOption) => {
@@ -77,29 +82,20 @@ export const useSinglePlayer = (genre: string) => {
 
       // Check if this is the last round
       if (gameStore.currentRound + 1 >= gameStore.maxRounds) {
-        setTimeout(() => {
-          setIsCardFlipped(false);
-          setTimeout(() => endGame(true), 500); // End after feedback
-        }, 2000);
+        setTimeout(() => endGame(true), 2000);
         return;
       }
     } else {
       gameStore.setGuessResult('incorrect');
       setWrongAttempts(newWrongAttempts);
       if (newWrongAttempts >= gameStore.gameConfig.odds) {
-        setTimeout(() => {
-          setIsCardFlipped(false);
-          setTimeout(() => endGame(false), 500); // End after feedback
-        }, 2000);
+        setTimeout(() => endGame(false), 2000);
         return;
       }
     }
 
     // Move to next round if not ended
-    setTimeout(() => {
-      setIsCardFlipped(false);
-      setTimeout(() => startNewRound(), 500);
-    }, 2000);
+    setTimeout(() => startNewRound(), 2000);
   };
 
   const endGame = (didWin: boolean) => {
@@ -116,6 +112,7 @@ export const useSinglePlayer = (genre: string) => {
     gameStore.resetGame();
     setIsGameStarted(false);
     setCurrentLyric(null);
+    setNextLyric(null);
     setGameResult(null);
     setWrongAttempts(0);
     setIsCardFlipped(false);
@@ -123,6 +120,7 @@ export const useSinglePlayer = (genre: string) => {
 
   return {
     currentLyric,
+    nextLyric,
     isGameStarted,
     selectedOption,
     correctOption,
