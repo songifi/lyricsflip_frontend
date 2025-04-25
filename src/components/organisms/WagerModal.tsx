@@ -15,6 +15,9 @@ import { WagerSummaryContent } from './WagerSummaryModal';
 import { WagerDetails } from '@/store';
 import { useGameStore } from '@/store/game';
 import { useRouter } from 'next/navigation';
+import { useGameService } from "@/hooks/useGameService";
+import { Genre } from "@/lib/dojo/types";
+import { Button } from "@/components/atoms/button";
 
 export function WagerModal() {
   const router = useRouter();
@@ -32,6 +35,7 @@ export function WagerModal() {
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const startGame = useGameStore((state) => state.startGame);
+  const { createRound, isLoading, error } = useGameService();
 
   useEffect(() => {
     const oddsValue = parseFloat(wagerDetails.odds);
@@ -67,28 +71,32 @@ export function WagerModal() {
     }
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     console.log("i am before startGame");
     
-    startGame({
-      genre: wagerDetails.genre,
-      difficulty: wagerDetails.difficulty,
-      duration: wagerDetails.duration,
-      odds: parseFloat(wagerDetails.odds),
-      wagerAmount: parseFloat(wagerDetails.wagerAmount),
-    });
-
-    closeModal();
-    router.push('/single-player');
-    setWagerDetails({
-      genre: '',
-      difficulty: '',
-      duration: '',
-      odds: '',
-      wagerAmount: '',
-      potentialWin: '',
-    });
-    setStage('form');
+    try {
+      const txHash = await createRound(wagerDetails.genre as Genre);
+      startGame({
+        genre: wagerDetails.genre,
+        difficulty: wagerDetails.difficulty,
+        duration: wagerDetails.duration,
+        odds: parseFloat(wagerDetails.odds),
+        wagerAmount: parseFloat(wagerDetails.wagerAmount),
+      });
+      closeModal();
+      router.push('/single-player');
+      setWagerDetails({
+        genre: '',
+        difficulty: '',
+        duration: '',
+        odds: '',
+        wagerAmount: '',
+        potentialWin: '',
+      });
+      setStage('form');
+    } catch (err) {
+      console.error("Failed to create round:", err);
+    }
   };
 
   const renderWagerForm = () => (
@@ -107,10 +115,11 @@ export function WagerModal() {
             <SelectValue placeholder="Select genre" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="pop">Pop</SelectItem>
-            <SelectItem value="rock">Rock</SelectItem>
-            <SelectItem value="hiphop">Hip Hop</SelectItem>
-            <SelectItem value="rnb">R&B</SelectItem>
+            {Object.values(Genre).map((g) => (
+              <SelectItem key={g} value={g}>
+                {g}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {formErrors.genre && (

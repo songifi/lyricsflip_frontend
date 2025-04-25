@@ -5,6 +5,7 @@ import { ClientProvider } from '@/components/providers/client-provider';
 import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
 import './globals.css';
+import { DojoProvider } from '@/lib/dojo/DojoProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,9 +33,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${interV.variable} antialiased`}
       >
         <ClientProvider>
-          <Navbar />
-          {children}
-          <MobileNav />
+          <DojoProvider>
+            <Navbar />
+            {children}
+            <MobileNav />
+          </DojoProvider>
         </ClientProvider>
       </body>
     </html>
