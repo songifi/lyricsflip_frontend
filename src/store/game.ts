@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { BigNumberish } from 'starknet';
 
 interface GameState {
   score: number;
@@ -15,6 +16,7 @@ interface GameState {
     wagerAmount: number;
   };
   lastGuessResult: 'correct' | 'incorrect' | null;
+  roundId: BigNumberish | null;
   increaseScore: () => void;
   setGuessResult: (result: GameState['lastGuessResult']) => void;
   decreaseTime: () => void;
@@ -22,6 +24,7 @@ interface GameState {
   startGame: (config: GameState['gameConfig']) => void;
   endGame: () => void;
   setGameStatus: (status: GameState['gameStatus']) => void;
+  setRoundId: (roundId: BigNumberish) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -39,6 +42,7 @@ export const useGameStore = create<GameState>((set) => ({
     wagerAmount: 0,
   },
   lastGuessResult: null,
+  roundId: null,
 
   increaseScore: () =>
     set((state) => ({
@@ -61,6 +65,7 @@ export const useGameStore = create<GameState>((set) => ({
       potentialWin: 0,
       currentRound: 0,
       lastGuessResult: null,
+      roundId: null,
       gameStatus: 'idle',
       gameConfig: {
         genre: '',
@@ -83,6 +88,7 @@ export const useGameStore = create<GameState>((set) => ({
       score: 0,
       currentRound: 0,
       lastGuessResult: null,
+      roundId: null,
       gameStatus: 'playing',
       gameConfig: config,
     }),
@@ -90,6 +96,8 @@ export const useGameStore = create<GameState>((set) => ({
   endGame: () => set({ gameStatus: 'ended' }),
 
   setGameStatus: (status) => set({ gameStatus: status }),
+
+  setRoundId: (roundId) => set({ roundId }),
 }));
 
 // Export startGameTimer as a separate function

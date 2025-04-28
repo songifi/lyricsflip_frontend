@@ -1,7 +1,12 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
+import { useDojo } from '@/lib/dojo/hooks/useDojo';
+import { BigNumberish } from 'starknet';
+import { useRouter } from 'next/navigation';
 
 export default function CreateChallenge() {
+  const router = useRouter();
+  const { systemCalls } = useDojo();
   const currency_Amount = { STRK: '18,678', USD: '5,676' };
   const [formData, setFormData] = useState({
     genre: '',
@@ -17,6 +22,8 @@ export default function CreateChallenge() {
     numbersOfPlayers: '',
     amount: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
@@ -67,19 +74,32 @@ export default function CreateChallenge() {
     return valid;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (validateForm()) {
-      // Here you would typically send the data to your backend
-      console.log('Form submitted:', formData);
-      // You might want to add a loading state and success/error handling here
-      alert('Challenge created successfully!');
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    if (!systemCalls) {
+      setError('System calls not initialized');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const roundId = await systemCalls.createRound(formData.genre as BigNumberish);
+      router.push(`/multiplayer?roundId=${roundId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create challenge');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    // Handle closing the form (e.g., navigate back or close modal)
+    router.back();
   };
 
   return (
