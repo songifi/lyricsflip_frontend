@@ -7,7 +7,7 @@ import { SongOptions } from '@/components/molecules/song-options';
 import { useMultiplayerRoom, type Player } from '@/hooks/use-multiplayer-room';
 import { useEffect, useState } from 'react';
 import { useGameService } from "@/hooks/useGameService";
-import { useDojo } from "@/lib/dojo/DojoProvider";
+import { useDojo } from "@/lib/dojo/hooks/useDojo";
 import { Round, RoundState } from "@/lib/dojo/types";
 import { Button } from "@/components/atoms/button";
 // Define the SongOption type
@@ -19,10 +19,11 @@ interface SongOption {
 export default function MultiplayerPage() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState<string>('Guest');
-  const { world } = useDojo();
+  const { systemCalls } = useDojo();
   const { joinRound, startRound, isLoading, error } = useGameService();
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
   const [roundId, setRoundId] = useState<string>("");
+  const [errorState, setError] = useState<string | null>(null);
   // In a real app, you would get the roomId from the URL or props
   const roomId = 'sample-room-id';
 
@@ -47,7 +48,7 @@ export default function MultiplayerPage() {
     if (isConnected && roomData) {
       // Add a small delay to ensure UI updates properly
       const timer = setTimeout(() => {
-        setIsLoading(false);
+        // Loading state is managed by useGameService
       }, 500);
 
       return () => clearTimeout(timer);
@@ -66,25 +67,32 @@ export default function MultiplayerPage() {
   };
 
   const handleJoinRound = async () => {
+    if (!systemCalls) {
+      setError('System calls not initialized');
+      return;
+    }
+
     try {
-      await joinRound(roundId);
-      // Fetch round details after joining
-      const round = await world.execute("lyricsflip::systems::actions::get_round", [roundId]);
+      await systemCalls.joinRound(roundId);
+      const round = await systemCalls.getRound(roundId);
       setCurrentRound(round);
     } catch (err) {
-      console.error("Failed to join round:", err);
+      setError(err instanceof Error ? err.message : 'Failed to join round');
     }
   };
 
   const handleStartRound = async () => {
-    if (!currentRound) return;
+    if (!systemCalls) {
+      setError('System calls not initialized');
+      return;
+    }
+
     try {
-      await startRound(roundId);
-      // Refresh round details
-      const round = await world.execute("lyricsflip::systems::actions::get_round", [roundId]);
+      await systemCalls.startRound(roundId);
+      const round = await systemCalls.getRound(roundId);
       setCurrentRound(round);
     } catch (err) {
-      console.error("Failed to start round:", err);
+      setError(err instanceof Error ? err.message : 'Failed to start round');
     }
   };
 
@@ -94,7 +102,7 @@ export default function MultiplayerPage() {
       <div className="container mx-auto px-4 py-6 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <h2 className="text-xl font-bold mb-4">Connecting to game room...</h2>
-          {error && <p className="text-red-500">{error}</p>}
+          {errorState && <p className="text-red-500">{errorState}</p>}
           <p className="text-sm text-gray-500 mt-2">
             This may take a moment...
           </p>
@@ -156,7 +164,7 @@ export default function MultiplayerPage() {
         </div>
       )}
 
-      {error && <p className="text-red-500 mt-4">{error}</p>}
+      {errorState && <p className="text-red-500 mt-4">{errorState}</p>}
 
       {/* Back button and header */}
       <div className="mb-6">

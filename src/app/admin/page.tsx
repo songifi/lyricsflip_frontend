@@ -1,31 +1,29 @@
+'use client';
+
 import { AdminConfig } from "@/components/organisms/AdminConfig";
-import { useDojo } from "@/lib/dojo/DojoProvider";
+import { useDojo } from "@/lib/dojo/hooks/useDojo";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AdminPage() {
-    const { world } = useDojo();
-    const router = useRouter();
+  const { account } = useDojo();
+  const router = useRouter();
 
-    useEffect(() => {
-        // Check if user is admin
-        const checkAdmin = async () => {
-            try {
-                const isAdmin = await world.execute("lyricsflip::systems::config::check_caller_is_admin", []);
-                if (!isAdmin) {
-                    router.push("/");
-                }
-            } catch (error) {
-                router.push("/");
-            }
-        };
-        checkAdmin();
-    }, [world, router]);
+  useEffect(() => {
+    // Redirect if no account or not admin
+    if (!account) {
+      router.push('/');
+    }
+  }, [account, router]);
 
-    return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-            <AdminConfig />
-        </div>
-    );
-} 
+  if (!account) {
+    return null;
+  }
+
+  return (
+    <main className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <AdminConfig />
+    </main>
+  );
+}

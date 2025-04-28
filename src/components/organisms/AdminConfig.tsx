@@ -1,20 +1,38 @@
-import { useGameService } from "@/hooks/useGameService";
 import { useState } from "react";
-import { Button } from "@/components/atoms/Button";
-import { Input } from "@/components/atoms/Input";
+import { Button } from "@/components/atoms/button";
+import { Input } from "@/components/atoms/input";
+import { useDojo } from "@/lib/dojo/hooks/useDojo";
 
 export const AdminConfig = () => {
-    const { setCardsPerRound, isLoading, error } = useGameService();
+    const { systemCalls } = useDojo();
     const [cardsPerRound, setCardsPerRoundValue] = useState<string>("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const numCards = parseInt(cardsPerRound);
         if (isNaN(numCards) || numCards <= 0) {
-            alert("Please enter a valid number of cards");
+            setError("Please enter a valid number of cards");
             return;
         }
-        await setCardsPerRound(numCards);
+        
+        if (!systemCalls) {
+            setError("System calls not initialized");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+            await systemCalls.setCardsPerRound(numCards);
+            setCardsPerRoundValue("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to set cards per round");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

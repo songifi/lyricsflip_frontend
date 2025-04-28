@@ -1,18 +1,37 @@
 import { Copy, Lightbulb, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useDojo } from '@/lib/dojo/hooks/useDojo';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function ChallengeInvite() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { systemCalls } = useDojo();
   const [isCopied, setIsCopied] = useState(false);
-  const inviteCode = 'LF34567QW';
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [roundData, setRoundData] = useState<any>(null);
 
-  // Mock challenge data - in a real app, this would come from props or state
-  const challengeData = {
-    gameMode: 'Wager (Multi Player)',
-    participants: 4,
-    wagerAmount: 6,
-    wagerValue: '10,000 STRK (100 USD)',
-    potentialWin: '80,000 STRK (800 USD)',
-  };
+  const roundId = searchParams.get('roundId');
+  const inviteCode = roundId || '';
+
+  useEffect(() => {
+    const fetchRoundData = async () => {
+      if (!roundId) return;
+      
+      try {
+        setIsLoading(true);
+        const data = await systemCalls.getRound(roundId);
+        setRoundData(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch round data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRoundData();
+  }, [roundId, systemCalls]);
 
   const handleCopyCode = () => {
     navigator.clipboard
@@ -27,12 +46,10 @@ export default function ChallengeInvite() {
   };
 
   const handleClose = () => {
-    // Handle closing the invite (e.g., navigate back or close modal)
-    console.log('Closing invite');
+    router.back();
   };
 
   const handleShareInvite = () => {
-    // Implement share functionality using Web Share API if available
     if (navigator.share) {
       navigator
         .share({
@@ -42,16 +59,80 @@ export default function ChallengeInvite() {
         })
         .catch((err) => console.log('Error sharing:', err));
     } else {
-      // Fallback for browsers that don't support Web Share API
       handleCopyCode();
       alert('Invite code copied to clipboard!');
     }
   };
 
-  const handleStartChallenge = () => {
-    // Handle starting the challenge
-    console.log('Starting challenge');
-    alert('Challenge starting soon!');
+  const handleStartChallenge = async () => {
+    if (!roundId) return;
+    
+    try {
+      setIsLoading(true);
+      await systemCalls.startRound(roundId);
+      router.push(`/multiplayer/game?roundId=${roundId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start challenge');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!systemCalls) {
+      setError('System calls not initialized');
+      return;
+    }
+
+    try {
+      const data = await systemCalls.getRound(roundId);
+      // ... rest of the code
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get round data');
+    }
+  };
+
+  const handleStart = async () => {
+    if (!systemCalls) {
+      setError('System calls not initialized');
+      return;
+    }
+
+    try {
+      await systemCalls.startRound(roundId);
+      // ... rest of the code
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start round');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-auto bg-black/10 flex justify-end p-10">
+        <div className="w-full max-w-[580px] min-h-[960px] h-full bg-white rounded-[16px] border-[1.5px] border-[#DBE2E8] p-[32px] flex items-center justify-center">
+          <p className="text-[24px] font-[600]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-auto bg-black/10 flex justify-end p-10">
+        <div className="w-full max-w-[580px] min-h-[960px] h-full bg-white rounded-[16px] border-[1.5px] border-[#DBE2E8] p-[32px] flex items-center justify-center">
+          <p className="text-[24px] font-[600] text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mock challenge data - in a real app, this would come from props or state
+  const challengeData = {
+    gameMode: 'Wager (Multi Player)',
+    participants: 4,
+    wagerAmount: 6,
+    wagerValue: '10,000 STRK (100 USD)',
+    potentialWin: '80,000 STRK (800 USD)',
   };
 
   return (

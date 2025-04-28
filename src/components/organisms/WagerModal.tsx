@@ -15,9 +15,27 @@ import { WagerSummaryContent } from './WagerSummaryModal';
 import { WagerDetails } from '@/store';
 import { useGameStore } from '@/store/game';
 import { useRouter } from 'next/navigation';
-import { useGameService } from "@/hooks/useGameService";
-import { Genre } from "@/lib/dojo/types";
-import { Button } from "@/components/atoms/button";
+import { Account, CairoCustomEnum } from 'starknet';
+import { useDojo } from '@lib/dojo/hooks/useDojo';
+
+// Map form genre values to contract Genre enum variants and their display names
+export const GENRE_MAPPING = {
+  pop: { variant: 'Pop', index: 0, display: 'Pop' },
+  rock: { variant: 'Rock', index: 1, display: 'Rock' },
+  hiphop: { variant: 'HipHop', index: 2, display: 'Hip Hop' },
+  rnb: { variant: 'RnB', index: 3, display: 'R&B' },
+} as const;
+
+// Type for genre keys
+export type GenreKey = keyof typeof GENRE_MAPPING;
+
+// Map genre strings to their enum indices
+export const GENRE_INDEX = {
+  'Pop': 0,
+  'Rock': 1,
+  'HipHop': 2,
+  'RnB': 3,
+};
 
 export function WagerModal() {
   const router = useRouter();
@@ -31,11 +49,13 @@ export function WagerModal() {
     wagerAmount: '',
     potentialWin: '',
   });
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const startGame = useGameStore((state) => state.startGame);
   const isModalOpen = isOpen && modalType === 'wager';
 
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  const startGame = useGameStore((state) => state.startGame);
-  const { createRound, isLoading, error } = useGameService();
+  // Initialize Dojo setup
+  const { setup, account, isLoading, error } = useDojo();
 
   useEffect(() => {
     const oddsValue = parseFloat(wagerDetails.odds);
@@ -54,6 +74,9 @@ export function WagerModal() {
     const errors: { [key: string]: string } = {};
 
     if (!wagerDetails.genre) errors.genre = 'Genre is required';
+    else if (!GENRE_MAPPING[wagerDetails.genre as keyof typeof GENRE_MAPPING]) {
+      errors.genre = 'Invalid genre selected';
+    }
     if (!wagerDetails.difficulty) errors.difficulty = 'Difficulty is required';
     if (!wagerDetails.duration) errors.duration = 'Duration is required';
     if (!wagerDetails.odds) errors.odds = 'Odds are required';
@@ -72,30 +95,72 @@ export function WagerModal() {
   };
 
   const handleStartGame = async () => {
-    console.log("i am before startGame");
-    
+    setSubmissionError(null);
     try {
-      const txHash = await createRound(wagerDetails.genre as Genre);
-      startGame({
-        genre: wagerDetails.genre,
-        difficulty: wagerDetails.difficulty,
-        duration: wagerDetails.duration,
-        odds: parseFloat(wagerDetails.odds),
-        wagerAmount: parseFloat(wagerDetails.wagerAmount),
-      });
-      closeModal();
-      router.push('/single-player');
-      setWagerDetails({
-        genre: '',
-        difficulty: '',
-        duration: '',
-        odds: '',
-        wagerAmount: '',
-        potentialWin: '',
-      });
-      setStage('form');
+      if (!account) {
+        setSubmissionError('No account connected. Please connect your wallet.');
+        return;
+      }
+
+      if (!setup?.config?.actions) {
+        setSubmissionError('Game system not initialized. Please try again.');
+        return;
+      }
+
+      // Map genre to contract enum variant
+      const genreKey = wagerDetails.genre as GenreKey;
+      const genreInfo = GENRE_MAPPING[genreKey];
+      
+      if (!genreInfo) {
+        setSubmissionError('Invalid genre selected.');
+        return;
+      }
+
+      try {
+        // Construct the genre enum in the format StarkNet.js expects
+        const genreEnum = {
+          type: 'enum',
+          variant: genreInfo.variant,
+          // For simple enums in Cairo 1.0, we need to pass an empty object
+          values: {}
+        };
+
+        console.log('Attempting createRound with genre:', {
+          genreEnum,
+          account: account?.address,
+          hasActions: !!setup?.config?.actions
+        });
+
+        const result = await setup.config.actions.createRound(account, genreEnum);
+        console.log('Round created with transaction hash:', result);
+
+        // Start game in store
+        startGame({
+          genre: wagerDetails.genre,
+          difficulty: wagerDetails.difficulty,
+          duration: wagerDetails.duration,
+          odds: parseFloat(wagerDetails.odds),
+          wagerAmount: parseFloat(wagerDetails.wagerAmount),
+        });
+
+        closeModal();
+        router.push('/single-player');
+        setWagerDetails({
+          genre: '',
+          difficulty: '',
+          duration: '',
+          odds: '',
+          wagerAmount: '',
+          potentialWin: '',
+        });
+        setStage('form');
+      } catch (err) {
+        console.error('Error creating round:', err);
+        setSubmissionError('Failed to create round. Please try again.');
+      }
     } catch (err) {
-      console.error("Failed to create round:", err);
+      console.error('Error creating round:', err);
+      setSubmissionError('Failed to create round. Please try again.');
     }
   };
 
@@ -115,11 +180,10 @@ export function WagerModal() {
             <SelectValue placeholder="Select genre" />
           </SelectTrigger>
           <SelectContent>
-            {Object.values(Genre).map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
+            <SelectItem value="pop">Pop</SelectItem>
+            <SelectItem value="rock">Rock</SelectItem>
+            <SelectItem value="hiphop">Hip Hop</SelectItem>
+            <SelectItem value="rnb">R&B</SelectItem>
           </SelectContent>
         </Select>
         {formErrors.genre && (
@@ -249,6 +313,9 @@ export function WagerModal() {
           />
         </div>
       </div>
+      {submissionError && (
+        <p className="text-red-500 text-sm mt-2">{submissionError}</p>
+      )}
     </div>
   );
 
