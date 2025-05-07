@@ -5,21 +5,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useModalStore } from '@/store/modal-store';
 import { Info } from 'lucide-react';
 import { Modal } from './modal';
+import { useRouter } from 'next/navigation';
+import { useGameStore } from '@/store/game';
 
 export function GameModal() {
+  const router = useRouter();
   const { isOpen, closeModal, modalType } = useModalStore();
+  const startGame = useGameStore((state) => state.startGame);
   const [genre, setGenre] = useState<string>('');
   const [difficulty, setDifficulty] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const isModalOpen = isOpen && modalType === 'game';
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    if (!genre) errors.genre = 'Genre is required';
+    if (!difficulty) errors.difficulty = 'Difficulty is required';
+    if (!duration) errors.duration = 'Duration is required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleStartGame = () => {
+    if (!validateForm()) return;
+
+    startGame({
+      genre,
+      difficulty,
+      duration,
+      odds: 3, // Quick game allows 3 attempts
+      wagerAmount: 0,
+      isMultiplayer: false
+    });
+
+    closeModal();
+    router.push('/quick-game');
+  };
 
   return (
     <Modal
       isOpen={isModalOpen}
       onClose={closeModal}
       title="Quick Game"
-      description="Quisque ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum."
+      description="Play a quick game without wagers. Select your preferences and start playing!"
       primaryActionLabel="Start Game"
+      onPrimaryAction={handleStartGame}
     >
       <div className="grid gap-6">
         <div className="grid gap-2">
@@ -27,7 +58,7 @@ export function GameModal() {
             Genre
           </label>
           <Select value={genre} onValueChange={setGenre}>
-            <SelectTrigger>
+            <SelectTrigger className={formErrors.genre ? 'border-red-500' : ''}>
               <SelectValue placeholder="Select genre" />
             </SelectTrigger>
             <SelectContent>
@@ -37,6 +68,9 @@ export function GameModal() {
               <SelectItem value="rnb">R&B</SelectItem>
             </SelectContent>
           </Select>
+          {formErrors.genre && (
+            <p className="text-red-500 text-xs">{formErrors.genre}</p>
+          )}
         </div>
 
         <div className="grid gap-2">
@@ -44,7 +78,7 @@ export function GameModal() {
             Difficulty Level
           </label>
           <Select value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger>
+            <SelectTrigger className={formErrors.difficulty ? 'border-red-500' : ''}>
               <SelectValue placeholder="Select difficulty" />
             </SelectTrigger>
             <SelectContent>
@@ -53,6 +87,9 @@ export function GameModal() {
               <SelectItem value="hard">Hard</SelectItem>
             </SelectContent>
           </Select>
+          {formErrors.difficulty && (
+            <p className="text-red-500 text-xs">{formErrors.difficulty}</p>
+          )}
         </div>
 
         <div className="grid gap-2">
@@ -60,15 +97,18 @@ export function GameModal() {
             Duration
           </label>
           <Select value={duration} onValueChange={setDuration}>
-            <SelectTrigger>
+            <SelectTrigger className={formErrors.duration ? 'border-red-500' : ''}>
               <SelectValue placeholder="Select duration" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="5min">5 minutes</SelectItem>
-              <SelectItem value="10min">10 minutes</SelectItem>
-              <SelectItem value="15min">15 minutes</SelectItem>
+              <SelectItem value="5 mins">5 minutes</SelectItem>
+              <SelectItem value="10 mins">10 minutes</SelectItem>
+              <SelectItem value="15 mins">15 minutes</SelectItem>
             </SelectContent>
           </Select>
+          {formErrors.duration && (
+            <p className="text-red-500 text-xs">{formErrors.duration}</p>
+          )}
         </div>
 
         <div className="bg-purple-50 p-4 rounded-lg flex gap-3">
@@ -79,7 +119,7 @@ export function GameModal() {
             <h4 className="font-medium text-purple-700 mb-1">INSTRUCTION</h4>
             <p className="text-gray-700">
               A card displaying a lyric from a song will appear along with a list of possible answers. Your goal is to
-              select the correct answer as quickly as possible.
+              select the correct answer as quickly as possible. You have three attempts per round!
             </p>
           </div>
         </div>

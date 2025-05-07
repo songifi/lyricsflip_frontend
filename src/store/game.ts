@@ -13,6 +13,7 @@ interface GameState {
     duration: string;
     odds: number;
     wagerAmount: number;
+    isMultiplayer?: boolean;
   };
   lastGuessResult: 'correct' | 'incorrect' | null;
   increaseScore: () => void;
