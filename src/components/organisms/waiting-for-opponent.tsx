@@ -1,87 +1,220 @@
 import { Copy, Lightbulb, X } from 'lucide-react';
-// import LoadingSpinner from '../atoms/loading-spiner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useModalStore } from '@/store/modal-store';
+import { useRoundEvents } from "../../lib/dojo/events/useRoundEvents";
+import { useAccount } from "@starknet-react/core";
+import { ErrorBoundary } from '../atoms/error-boundary';
+import LoadingSpinner from '../atoms/loading-spinner';
 
-export default function WaitingForOpponent() {
-  const [timeLeft, setTimeLeft] = useState(120);
-  const [playersJoined, setPlayersJoined] = useState(1);
-  const [totalPlayers, setTotalPlayers] = useState(2);
+interface WaitingForOpponentProps {
+  onStart?: () => void;
+}
+
+function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
+  const { modalPayload } = useModalStore();
+  const { account } = useAccount();
+  const creatorAddress = modalPayload?.creatorAddress;
+  
   const [isCopied, setIsCopied] = useState(false);
-  const inviteCode = 'LF34567QW';
+  const [playersJoined, setPlayersJoined] = useState(1);
+  const totalPlayers = 2;
+  const [isGameStarting, setIsGameStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const [inviteCode, setInviteCode] = useState<string>('');
+  const [isWaitingForRound, setIsWaitingForRound] = useState(true);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Handle closing the waiting screen
-  const handleClose = () => {
-    console.log('Closing waiting screen');
-  };
+  // Now THIS component listens for round events
+  const { latestEvent, error: roundError, isSubscribed } = useRoundEvents();
+
+  // Component mount/unmount handling
+  useEffect(() => {
+    console.log('WaitingForOpponent mounted');
+    console.log('modalPayload:', modalPayload);
+    console.log('creatorAddress:', creatorAddress);
+    console.log('current account:', account?.address);
+
+    return () => {
+      console.log('WaitingForOpponent unmounted');
+      mountedRef.current = false;
+      
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = null;
+      }
+    };
+  }, [modalPayload, creatorAddress, account?.address]);
+
+  // Listen for round creation events
+  useEffect(() => {
+    console.log('🔍 Checking round event conditions:');
+    console.log('  - latestEvent:', latestEvent);
+    console.log('  - account?.address:', account?.address);
+    console.log('  - creatorAddress:', creatorAddress);
+    console.log('  - isSubscribed:', isSubscribed);
+    
+    if (!latestEvent || !account?.address || !creatorAddress) {
+      console.log('❌ Missing required data for round matching');
+      return;
+    }
+
+    console.log('📝 Received round event:', JSON.stringify(latestEvent, null, 2));
+    console.log('🎯 Event creator:', latestEvent.creator);
+    console.log('🎯 Expected creator:', creatorAddress);
+    console.log('🎯 Current account:', account.address);
+
+    // Check if this round was created by the current user
+    const creatorMatches = latestEvent.creator === account.address || latestEvent.creator === creatorAddress;
+    console.log('✅ Creator matches:', creatorMatches);
+    
+    if (creatorMatches) {
+      console.log('🎉 Found our round! ID:', latestEvent.round_id);
+      setInviteCode(latestEvent.round_id);
+      setIsWaitingForRound(false);
+    } else {
+      console.log('❌ Creator mismatch - not our round');
+    }
+  }, [latestEvent, account?.address, creatorAddress, isSubscribed]);
+
+  // Handle round subscription errors
+  useEffect(() => {
+    if (roundError) {
+      console.error("Round event error:", roundError);
+      setError(roundError);
+    }
+  }, [roundError]);
 
   // Handle copying the invite code
   const handleCopyCode = () => {
-    navigator.clipboard
-      .writeText(inviteCode)
-      .then(() => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-      })
-      .catch((err) => {
-        console.error('Failed to copy text: ', err);
-      });
+    if (!mountedRef.current || !inviteCode) return;
+
+    try {
+      navigator.clipboard
+        .writeText(inviteCode)
+        .then(() => {
+          if (mountedRef.current) {
+            setIsCopied(true);
+            if (copyTimeoutRef.current) {
+              clearTimeout(copyTimeoutRef.current);
+            }
+            copyTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current) {
+                setIsCopied(false);
+              }
+            }, 2000);
+          }
+        })
+        .catch((err) => {
+          throw new Error('Failed to copy invite code');
+        });
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to copy invite code');
+        console.error('Error copying code:', err);
+      }
+    }
   };
 
-  // Countdown timer effect
-  useEffect(() => {
-    if (timeLeft <= 0) return;
+  // Handle game start
+  const handleGameStart = useCallback(() => {
+    if (!mountedRef.current) return;
 
-    const timerId = setInterval(() => {
-      setTimeLeft(timeLeft - 1);
-    }, 1000);
-
-    return () => clearInterval(timerId);
-  }, [timeLeft]);
-
-  // Simulate player joining (in a real app, this would come from WebSocket or polling)
-  useEffect(() => {
-    const joinInterval = setInterval(() => {
-      if (playersJoined < totalPlayers) {
-        setPlayersJoined((prev) => prev + 1);
-      } else {
-        clearInterval(joinInterval);
+    try {
+      if (isGameStarting) return;
+      
+      setIsGameStarting(true);
+      console.log('Starting game...');
+      
+      if (onStart) {
+        onStart();
       }
-    }, 15000);
-
-    return () => clearInterval(joinInterval);
-  }, [playersJoined, totalPlayers]);
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to start game');
+        setIsGameStarting(false);
+        console.error('Error starting game:', err);
+      }
+    }
+  }, [onStart, isGameStarting]);
 
   // Format time for display (MM:SS)
+  const [timeLeft, setTimeLeft] = useState(120);
+  useEffect(() => {
+    if (!mountedRef.current) return;
+
+    if (timeLeft <= 0) {
+      if (mountedRef.current) {
+        setError('Time expired waiting for opponent');
+      }
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      if (mountedRef.current) {
+        setTimeLeft((prev) => prev - 1);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, [timeLeft]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  if (isWaitingForRound) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+        <p className="mt-4 text-lg text-gray-600">Setting up your challenge...</p>
+        <p className="mt-2 text-sm text-gray-500">Waiting for round to be created</p>
+        {!isSubscribed && (
+          <p className="mt-2 text-xs text-orange-500">Connecting to game server...</p>
+        )}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+        <h2 className="text-lg font-semibold text-red-800 mb-2">
+          Error
+        </h2>
+        <p className="text-sm text-red-600 mb-4">
+          {error}
+        </p>
+        <button
+          onClick={() => setError(null)}
+          className="px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-auto bg-black/10 flex justify-end p-10">
-      <div className="w-full max-w-[580px] min-h-[960px] h-full bg-white rounded-[16px] border-[1.5px] border-[#DBE2E8] p-[32px]">
-        <div className="flex justify-end">
-          <p
-            className="hover:cursor-pointer p-1 w-fit border border-[#DBE1E7] rounded-full"
-            onClick={handleClose}
-          >
-            <X size={16} color="#090909" />
-          </p>
-        </div>
-
-        <div className="w-full flex flex-col gap-[4px]">
-          <h1 className="text-[24px] font-[600]">
-            Your wager challenge has been created
-          </h1>
-          <p className="text-[14px] font-[400] text-[#120029]">
-            Waiting for others to join
-          </p>
-        </div>
-
-        {/* Invite Code Section */}
-        <div className="flex justify-center items-center space-x-3 my-5">
-          <h1 className="sm:text-[48px] text-[30px] font-[800]">{inviteCode}</h1>
+    <>
+      <div className="w-full flex flex-col gap-[4px]">
+        <h1 className="text-[24px] font-[600]">
+          Your wager challenge has been created
+        </h1>
+        <p className="text-[14px] font-[400] text-[#120029]">
+          Waiting for others to join
+        </p>
+      </div>
+      {/* Invite Code Section */}
+      <div className="flex justify-center items-center space-x-3 my-5">
+        <h1 className="sm:text-[12px] text-[10px] font-[800]">
+          {inviteCode ? inviteCode : <span className="text-orange-500 text-lg">Loading invite code...</span>}
+        </h1>
+        {inviteCode && (
           <span
             className="hover:cursor-pointer w-fit relative"
             onClick={handleCopyCode}
@@ -94,69 +227,88 @@ export default function WaitingForOpponent() {
               </span>
             )}
           </span>
+        )}
+      </div>
+      {/* Challenge Info Section */}
+      <div className="flex flex-col gap-[12px] mt-4">
+        <div className="flex w-full border-b border-black/30 justify-between text-[16px] font-[400]">
+          <span className="p-[12px] text-[#636363]">Time Remaining</span>
+          <span className="font-[500]">{formatTime(timeLeft)}</span>
         </div>
-
-        {/* Challenge Info Section */}
-        <div className="flex flex-col gap-[12px] mt-4">
-          <div className="flex w-full border-b border-black/30 justify-between text-[16px] font-[400]">
-            <span className="p-[12px] text-[#636363]">Time Remaining</span>
-            <span className="font-[500]">{formatTime(timeLeft)}</span>
-          </div>
-          <div className="flex w-full border-b border-black/30 justify-between text-[16px] font-[400]">
-            <span className="p-[12px] text-[#636363]">Players Joined</span>
-            <span className="font-[500]">
-              {playersJoined}/{totalPlayers}
-            </span>
-          </div>
-        </div>
-
-        {/* Instructions Section */}
-        <div className="border-[0.5px] p-[16px] rounded-[12px] gap-[17px] bg-[#F0F0F0] flex flex-col mt-5">
-          <div className="flex space-x-1 items-center text-[#9747FF]">
-            <Lightbulb size={16} />
-            <span className="text-[12px] font-[500]">INSTRUCTION</span>
-          </div>
-          <p className="text-[16px] bg-white font-[400] text-[#08090A] border p-[16px] rounded-[8px] border-[#DBE1E7]">
-            A card displaying a lyric from a song will appear along with a list
-            of possible answers. Your goal is to score the highest point amongst
-            your challengers.
-          </p>
-        </div>
-
-        {/* Loading and Status Section */}
-        <div className="w-full flex flex-col justify-center items-center gap-[8px] mt-20">
-          {/* <LoadingSpinner /> */}
-          <div className="flex flex-col gap-[8px] justify-center w-full items-center">
-            <span className="text-[20px] font-[500] text-[#000000]">
-              {playersJoined === totalPlayers
-                ? 'All players joined!'
-                : 'Waiting for opponents...'}
-            </span>
-            <span className="text-[16px] font-[400] text-[#666666]">
-              {playersJoined} joined, {totalPlayers - playersJoined} left
-            </span>
-            {playersJoined === totalPlayers && (
-              <button
-                className="mt-4 text-[16px] font-[500] w-full max-w-[200px] hover:bg-transparent hover:border border-[#9747FF] hover:text-[#9747FF] transition-colors duration-200 rounded-full bg-[#9747FF] text-white py-[12px]"
-                onClick={() => console.log('Starting game...')}
-              >
-                Start Game
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Share Button */}
-        <div className="w-full mt-8">
-          <button
-            type="button"
-            onClick={handleCopyCode}
-            className="w-full rounded-full bg-transparent border border-[#9747FF] hover:bg-[#9747FF] text-[#9747FF] py-[16px] hover:text-white text-[16px] font-[600] transition-all duration-200"
-          >
-            Share Invite Code
-          </button>
+        <div className="flex w-full border-b border-black/30 justify-between text-[16px] font-[400]">
+          <span className="p-[12px] text-[#636363]">Players Joined</span>
+          <span className="font-[500]">
+            {playersJoined}/{totalPlayers}
+          </span>
         </div>
       </div>
-    </div>
+      {/* Instructions Section */}
+      <div className="border-[0.5px] p-[16px] rounded-[12px] gap-[17px] bg-[#F0F0F0] flex flex-col mt-5">
+        <div className="flex space-x-1 items-center text-[#9747FF]">
+          <Lightbulb size={16} />
+          <span className="text-[12px] font-[500]">INSTRUCTION</span>
+        </div>
+        <p className="text-[16px] bg-white font-[400] text-[#08090A] border p-[16px] rounded-[8px] border-[#DBE1E7]">
+          A card displaying a lyric from a song will appear along with a list
+          of possible answers. Your goal is to score the highest point amongst
+          your challengers.
+        </p>
+      </div>
+      {/* Loading and Status Section */}
+      <div className="w-full flex flex-col justify-center items-center gap-[8px] mt-20">
+        <div className="flex flex-col gap-[8px] justify-center w-full items-center">
+          {isGameStarting ? (
+            <>
+              <LoadingSpinner size="md" />
+              <span className="text-[20px] font-[500] text-[#000000]">
+                Game is starting...
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[20px] font-[500] text-[#000000]">
+                {playersJoined === totalPlayers
+                  ? 'All players joined!'
+                  : 'Waiting for opponents...'}
+              </span>
+              <span className="text-[16px] font-[400] text-[#666666]">
+                {playersJoined} joined, {totalPlayers - playersJoined} left
+              </span>
+              {playersJoined === totalPlayers && !isGameStarting && (
+                <button
+                  className="mt-4 text-[16px] font-[500] w-full max-w-[200px] hover:bg-transparent hover:border border-[#9747FF] hover:text-[#9747FF] transition-colors duration-200 rounded-full bg-[#9747FF] text-white py-[12px]"
+                  onClick={handleGameStart}
+                >
+                  Start Game
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      {/* Share Button */}
+      <div className="w-full mt-8">
+        <button
+          type="button"
+          onClick={handleCopyCode}
+          disabled={!inviteCode}
+          className="w-full rounded-full bg-transparent border border-[#9747FF] hover:bg-[#9747FF] text-[#9747FF] py-[16px] hover:text-white text-[16px] font-[600] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Share Invite Code
+        </button>
+      </div>
+    </>
+  );
+}
+
+export default function WaitingForOpponent(props: WaitingForOpponentProps) {
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('Error in WaitingForOpponent:', error, errorInfo);
+      }}
+    >
+      <WaitingForOpponentContent {...props} />
+    </ErrorBoundary>
   );
 }

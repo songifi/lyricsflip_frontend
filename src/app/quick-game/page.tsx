@@ -1,15 +1,16 @@
-"use client";
+'use client';
+
 import { SongOptions } from '@/components/molecules/song-options';
 import { StatisticsPanel } from '@/components/molecules/statistics-panel';
 import GameResultPopup from '@/components/organisms/GameResultPopup';
 import { LyricCard } from '@/components/organisms/LyricCard';
-import { useSinglePlayer } from '@/features/game/hooks/useSinglePlayer';
-import { useGameStore, startGameTimer } from '@/store/game';
+import { useGameStore } from '@/store/game';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useQuickGame } from '@/features/game/hooks';
 import { useEffect } from 'react';
 
-export default function SinglePlayerGame() {
+export default function QuickGamePage() {
   const router = useRouter();
   const gameStore = useGameStore();
   const genre = gameStore.gameConfig.genre;
@@ -24,13 +25,7 @@ export default function SinglePlayerGame() {
     gameResult,
     isCardFlipped,
     nextLyric,
-  } = useSinglePlayer(genre);
-
-  useEffect(() => {
-    if (isGameStarted && gameStore.gameStatus === 'playing') {
-      startGameTimer();
-    }
-  }, [isGameStarted, gameStore.gameStatus]);
+  } = useQuickGame(genre);
 
   const handleBack = () => {
     router.push('/');
@@ -39,7 +34,7 @@ export default function SinglePlayerGame() {
   if (!isGameStarted || !currentLyric) {
     return (
       <div className="container mt-4 mx-auto h-fit w-full mb-20 lg:mb-12 p-4 lg:p-0 md:mt-24 lg:mt-32">
-        <p>Please start a game from the Wager Modal</p>
+        <p>Please start a game from the Quick Game Modal</p>
         <button
           onClick={() => router.push('/')}
           className="mt-4 px-4 py-2 bg-purple-500 text-white rounded"
@@ -53,14 +48,11 @@ export default function SinglePlayerGame() {
   return (
     <div className="container mt-4 mx-auto h-fit w-full mb-20 lg:mb-12 p-4 lg:p-0 md:mt-24 lg:mt-32">
       <div className="mb-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center text-gray-600 mb-4"
-        >
+        <button onClick={handleBack} className="flex items-center text-gray-600 mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </button>
-        <h1 className="text-2xl font-bold">Wager (Single Player)</h1>
+        <h1 className="text-2xl font-bold">Quick Game</h1>
         <p className="text-gray-600 text-sm">
           {`${genre} Genre | ${difficulty} Difficulty`}
         </p>
@@ -69,7 +61,7 @@ export default function SinglePlayerGame() {
       {gameResult && (
         <GameResultPopup
           isWin={gameResult.isWin}
-          isMultiplayer={gameResult.isMultiplayer}
+          isMultiplayer={false}
         />
       )}
 
@@ -98,8 +90,8 @@ export default function SinglePlayerGame() {
         <div className="lg:col-start-3 lg:col-span-1 order-2 lg:order-3">
           <StatisticsPanel
             time={`${gameStore.timeLeft}`}
-            potWin={`${gameStore.potentialWin} STRK`}
             scores={`${gameStore.score} / ${gameStore.maxRounds}`}
+            potWin="N/A"
           />
         </div>
       </div>

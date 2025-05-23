@@ -5,50 +5,26 @@ import { GameModal } from '@/components/organisms/game-modal';
 import { GameOptions } from '@/components/organisms/game-mode-selection';
 import { WagerModal } from '@/components/organisms/WagerModal';
 import { useModalStore } from '@/store/modal-store';
-import { useDojo, type DojoHookResult } from '@/lib/dojo/hooks/useDojo';
+import CreateChallenge from '@/components/organisms/create-challange';
+import WaitingForOpponent from '@/components/organisms/waiting-for-opponent';
+import { Modal } from '@/components/organisms/modal';
+import ChallengeModal from '@/components/organisms/challengeModal';
 
 export default function Home() {
   const { openModal } = useModalStore();
-  const { systemCalls, account, isLoading, error } = useDojo();
+  const { modalType, isOpen, closeModal } = useModalStore();
 
   const handleGameSelect = (gameId: string) => {
     if (gameId === 'quick-game') {
       openModal('game');
     } else if (gameId === 'single-player') {
-      openModal('wager');
+      openModal('single-wager');
+    } else if (gameId === 'multi-player') {
+      openModal('create-challenge');
+    } else if (gameId === 'challenge') {
+      openModal('challenge');
     }
-    // Add handlers for other game types as needed
   };
-
-  // Debug: Log initialization status
-  console.log('Dojo initialization:', {
-    isLoading,
-    hasSystemCalls: !!systemCalls,
-    hasAccount: !!account,
-    error: error?.message
-  });
-
-  // Show loading state while Dojo is initializing
-  if (isLoading) {
-    return (
-      <main className="lg:max-w-[53rem] mt-4 mx-auto h-fit w-full mb-20 lg:mb-12 p-4 lg:p-0 md:mt-24 lg:mt-32">
-        <div className="flex items-center justify-center">
-          <div className="text-lg">Loading game...</div>
-        </div>
-      </main>
-    );
-  }
-
-  // Show error state if initialization failed
-  if (error) {
-    return (
-      <main className="lg:max-w-[53rem] mt-4 mx-auto h-fit w-full mb-20 lg:mb-12 p-4 lg:p-0 md:mt-24 lg:mt-32">
-        <div className="flex items-center justify-center">
-          <div className="text-lg text-red-500">Error: {error.message}</div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="lg:max-w-[53rem] mt-4 mx-auto h-fit w-full mb-20 lg:mb-12 p-4 lg:p-0 md:mt-24 lg:mt-32">
@@ -58,6 +34,21 @@ export default function Home() {
       {/* Modals */}
       <GameModal />
       <WagerModal />
+      {modalType === 'create-challenge' && isOpen && (
+        <Modal isOpen={isOpen} onClose={closeModal} title="Wager (Multi Player)" description="Create a new multiplayer wager challenge." showHeader={false} showFooter={false}>
+          <CreateChallenge />
+        </Modal>
+      )}
+      {modalType === 'waiting-for-opponent' && isOpen && (
+        <Modal isOpen={isOpen} onClose={closeModal} title="Waiting for Opponent" description="Waiting for other players to join your challenge." showHeader={false} showFooter={false}>
+          <WaitingForOpponent />
+        </Modal>
+      )}
+      {modalType === 'challenge' && isOpen && (
+        <Modal isOpen={isOpen} onClose={closeModal} title="Join a Challenge" description="Enter a challenge code to join an existing game." showHeader={false} showFooter={false}>
+          <ChallengeModal />
+        </Modal>
+      )}
     </main>
   );
 }

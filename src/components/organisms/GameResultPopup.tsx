@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { FaCircleCheck } from 'react-icons/fa6';
 import { MdCancel } from 'react-icons/md';
 import { Button } from '@components/atoms/button';
 import { Modal } from './modal';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useDojo } from '@/lib/dojo/hooks/useDojo';
+import { useSinglePlayer } from '@/features/game/hooks/useSinglePlayer';
+import { useGameStore } from '@/store/game';
+import { useRouter } from 'next/navigation';
 
 interface GameResultPopupProps {
   isWin: boolean;
@@ -19,105 +20,19 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
   isMultiplayer,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(true);
+  const gameStore = useGameStore();
+  const genre = gameStore.gameConfig.genre;
+  const { resetGame } = useSinglePlayer(genre);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { systemCalls } = useDojo();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [roundData, setRoundData] = useState<any>(null);
-
-  const roundId = searchParams.get('roundId');
-
-  useEffect(() => {
-    const fetchRoundData = async () => {
-      if (!systemCalls) {
-        setError('System calls not initialized');
-        return;
-      }
-
-      if (!roundId) return;
-      
-      try {
-        setIsLoading(true);
-        const data = await systemCalls.getRound(roundId);
-        setRoundData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to get round data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRoundData();
-  }, [roundId, systemCalls]);
+  const percent = (gameStore.score / gameStore.maxRounds) * 100;
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    resetGame();
     router.push('/');
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Check out my game result!',
-        text: `I scored ${roundData?.score || 0} points in LyricsFlip!`,
-        url: window.location.href,
-      }).catch((err) => console.log('Error sharing:', err));
-    } else {
-      navigator.clipboard.writeText(window.location.href)
-        .then(() => alert('Link copied to clipboard!'))
-        .catch((err) => console.error('Failed to copy:', err));
-    }
-  };
-
-  const handleClaimEarnings = async () => {
-    if (!systemCalls) {
-      setError('System calls not initialized');
-      return;
-    }
-
-    if (!roundId) return;
-    
-    try {
-      setIsLoading(true);
-      await systemCalls.claimEarnings(roundId);
-      alert('Earnings claimed successfully!');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to claim earnings');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const renderResultContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-[24px] font-[600]">Loading...</p>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-[24px] font-[600] text-red-500">{error}</p>
-        </div>
-      );
-    }
-
-    if (!roundData) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-[24px] font-[600]">No round data available</p>
-        </div>
-      );
-    }
-
-    const score = roundData.score || 0;
-    const maxRounds = roundData.maxRounds || 0;
-    const percent = (score / maxRounds) * 100;
-
     return (
       <div className="space-y-4 mt-10">
         <div className="flex flex-col justify-center items-center gap-6">
@@ -131,7 +46,7 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
             />
           </div>
           <p className="font-bold text-[32px]">
-            <span className="text-[#70E3C7]">{score} Points</span> -{' '}
+            <span className="text-[#70E3C7]">368 Points</span> -{' '}
             {isWin && isMultiplayer ? (
               <span>You won🥇</span>
             ) : isWin ? (
@@ -147,13 +62,14 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Score</span>
               <span className="font-medium">
-                {`${score} / ${maxRounds}`} ({percent.toFixed()}%)
+                {`${gameStore.score} / ${gameStore.maxRounds}`} (
+                {percent.toFixed()}%)
               </span>
             </div>
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Odds</span>
               <span className="font-medium flex items-center gap-2">
-                {roundData.odds} odds (Get everything right){' '}
+                {gameStore.gameConfig.odds} odds (Get everything right){' '}
                 <span>
                   {isWin ? (
                     <FaCircleCheck className="text-green-600 size-5" />
@@ -166,14 +82,14 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Wager Amount</span>
               <span className="font-medium">
-                {roundData.wagerAmount} STRK
+                {gameStore.gameConfig.wagerAmount} STRK
               </span>
             </div>
             {isWin && (
               <div className="flex justify-between items-center border-b py-[12px]">
                 <span className="text-gray-600">You Win</span>
                 <span className="font-medium text-[#9747FF]">
-                  {roundData.potentialWin} STRK
+                  {gameStore.potentialWin} STRK
                 </span>
               </div>
             )}
@@ -183,28 +99,28 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Winner</span>
               <span className="font-medium">
-                {isWin ? 'You' : roundData.winner}
+                {isWin ? 'You' : 'theXaxxo (678 Pts)'}
               </span>
             </div>
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Prize Won</span>
               <span className="font-medium text-[#9747FF]">
-                {roundData.prize} STRK
+                80,000 STRK (800 USD)
               </span>
             </div>
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Wager Amount</span>
-              <span className="font-medium">{roundData.wagerAmount} STRK</span>
+              <span className="font-medium">10,000 STRK (100 USD)</span>
             </div>
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Second Place</span>
               <span className="font-medium">
-                {isWin ? roundData.secondPlace : 'You'}
+                {isWin ? 'theXaxxo (345 Pts)' : 'You'}
               </span>
             </div>
             <div className="flex justify-between items-center border-b py-[12px]">
               <span className="text-gray-600">Third Place</span>
-              <span className="font-medium">{roundData.thirdPlace}</span>
+              <span className="font-medium">theXaxxo (345 Pts)</span>
             </div>
           </div>
         )}
@@ -219,7 +135,6 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
           variant="outline"
           size="lg"
           className="w-[238px] px-2 py-6 border-[#9747FF] h-[72px] flex justify-center items-center rounded-full font-medium text-md text-[#9747FF]"
-          onClick={handleShare}
         >
           Share
         </Button>
@@ -227,10 +142,8 @@ const GameResultPopup: React.FC<GameResultPopupProps> = ({
           variant="purple"
           size="lg"
           className="w-[238px] px-2 py-6 h-[72px] flex justify-center items-center rounded-full font-medium text-md text-white"
-          onClick={handleClaimEarnings}
-          disabled={isLoading}
         >
-          {isLoading ? 'Claiming...' : 'Claim Earning'}
+          Claim Earning
         </Button>
       </div>
     );
