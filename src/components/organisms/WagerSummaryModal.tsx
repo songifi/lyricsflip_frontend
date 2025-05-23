@@ -1,14 +1,10 @@
 'use client';
 
-import { useModalStore } from '@/store/modal-store';
 import { Modal } from './modal';
-import { Button } from '@/components/atoms/button';
-import { useDojo } from '@lib/dojo/hooks/useDojo';
-import { useEffect, useState } from 'react';
-import { GENRE_MAPPING, GenreKey } from './WagerModal';
+import { InfoIcon } from 'lucide-react';
+import { useState } from 'react';
+import { useModalStore } from '@/store/modal-store';
 import { WagerDetails } from '@/store';
-
-interface WagerSummaryContentProps extends WagerDetails {}
 
 export function WagerSummaryContent({
   genre,
@@ -17,108 +13,89 @@ export function WagerSummaryContent({
   odds,
   wagerAmount,
   potentialWin,
-}: WagerSummaryContentProps) {
-  // Map genre to display name using the new structure
-  const displayGenre = genre ? GENRE_MAPPING[genre as GenreKey]?.display || genre : 'Unknown';
-
+}: WagerDetails) {
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="flex justify-between">
-          <span className="text-gray-500">Genre:</span>
-          <span className="font-medium">{displayGenre}</span>
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate
+        libero et velit interdum.
+      </p>
+
+      <div className="space-y-3">
+        <div className="flex justify-between items-center border-b py-[12px]">
+          <span className="text-gray-600">Genre</span>
+          <span className="font-medium">{genre}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Difficulty:</span>
+
+        <div className="flex justify-between items-center border-b py-[12px]">
+          <span className="text-gray-600">Difficulty Level</span>
           <span className="font-medium">{difficulty}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Duration:</span>
+
+        <div className="flex justify-between items-center border-b py-[12px]">
+          <span className="text-gray-600">Duration</span>
           <span className="font-medium">{duration}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Odds:</span>
-          <span className="font-medium">{odds}x</span>
+
+        <div className="flex justify-between items-center border-b py-[12px]">
+          <span className="text-gray-600">Odds</span>
+          <span className="font-medium">{odds} odds (get everything right)</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Wager Amount:</span>
+
+        <div className="flex justify-between items-center border-b py-[12px]">
+          <span className="text-gray-600">Wager Amount</span>
           <span className="font-medium">{wagerAmount} STRK</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Potential Win:</span>
-          <span className="font-medium text-green-500">{potentialWin}</span>
+        <div className="flex justify-between items-center border-b py-[12px]">
+          <span className="text-gray-600">You Win</span>
+          <span className="font-medium text-[#9747FF]">{potentialWin}</span>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="font-medium">Instructions:</h3>
-        <ul className="list-disc list-inside space-y-2 text-sm text-gray-500">
-          <li>Complete the round within the specified duration</li>
-          <li>Score points by correctly identifying lyrics</li>
-          <li>Your winnings will be calculated based on your score and the odds</li>
-        </ul>
+      <div className="bg-[#F0F0F0] p-4 rounded-lg gap-3 flex flex-col">
+        <div className="flex items-center **:flex-shrink-0 text-[#9747FF] text-xs">
+          <InfoIcon className="w-3 h-3 mr-2" /> <span>INSTRUCTION</span>
+        </div>
+        <div className="text-sm bg-white p-4 rounded-[8px]">
+          <p className="text-gray-700">
+            A card displaying a lyric from a song will appear along with a list
+            of possible answers. Your goal according to the odd you picked is to
+            get 80% of the lyrics presented you.
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
 export function WagerSummaryModal() {
-  const { isOpen, closeModal, modalType } = useModalStore();
-  const { setup } = useDojo();
-  const [wagerDetails, setWagerDetails] = useState<WagerDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { isOpen, modalType, closeModal } = useModalStore();
+  const [summary] = useState({
+    genre: 'Hip Hop',
+    difficulty: 'Expert',
+    duration: '10 Mins',
+    odds: '10 odds (get everything right)',
+    wagerAmount: '10,000 STRK (100 USD)',
+    potentialWin: '80,000 STRK (800 USD)',
+  });
 
-  const fetchRoundDetails = async () => {
-    if (!setup) {
-      setError('Dojo setup not initialized');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      // Placeholder: Replace with actual setup.world.actions.getRound or query
-      // Example: const round = await setup.world.actions.getRound('current');
-      // For now, use dummy data to simulate standalone modal
-      const round = {
-        genre: 'pop',
-        difficulty: 'Medium',
-        duration: '10 mins',
-        odds: '10',
-        wagerAmount: '100',
-        potentialWin: '1000 STRK',
-      };
-      setWagerDetails(round);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get round details');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleStartGame = () => {
+    closeModal();
+    // Start game logic would go here
+    console.log('Starting wager game...');
   };
 
-  useEffect(() => {
-    if (isOpen && modalType === 'wager-summary') {
-      fetchRoundDetails();
-    }
-  }, [isOpen, modalType, setup]);
-
-  if (!isOpen || modalType !== 'wager-summary') return null;
+  const isModalOpen = isOpen && modalType === 'wager-summary';
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen={isModalOpen}
       onClose={closeModal}
       title="Wager Summary"
+      primaryActionLabel="Start Game"
+      onPrimaryAction={handleStartGame}
     >
-      {isLoading ? (
-        <div className="text-center">Loading round details...</div>
-      ) : error ? (
-        <div className="text-red-500 text-center">{error}</div>
-      ) : wagerDetails ? (
-        <WagerSummaryContent {...wagerDetails} />
-      ) : (
-        <div className="text-center">No round details available</div>
-      )}
+      <WagerSummaryContent {...summary} />
     </Modal>
   );
 }
