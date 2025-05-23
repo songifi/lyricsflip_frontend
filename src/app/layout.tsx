@@ -4,6 +4,7 @@ import { metadata } from "./metadata";
 import { ClientProvider } from '@/components/providers/client-provider';
 import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const geistSans = Geist({
@@ -35,6 +36,12 @@ export default function RootLayout({
           <Navbar />
           {children}
           <MobileNav />
+          <Toaster 
+            position="top-center"
+            expand={false}
+            richColors
+            closeButton
+          />
         </ClientProvider>
       </body>
     </html>

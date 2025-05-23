@@ -8,6 +8,19 @@ import { Modal } from './modal';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/game';
 
+import { KeysClause, ToriiQueryBuilder } from "@dojoengine/sdk";
+
+import { ModelsMapping } from "../../lib/dojo/typescript/models.gen";
+import { useSystemCalls } from "../../lib/dojo/useSystemCalls";
+import { useAccount } from "@starknet-react/core";
+import {
+  useDojoSDK,
+  useEntityId,
+  useEntityQuery,
+  useModel,
+} from "@dojoengine/sdk/react";
+import { addAddressPadding, CairoCustomEnum } from "starknet";
+
 export function GameModal() {
   const router = useRouter();
   const { isOpen, closeModal, modalType } = useModalStore();
@@ -26,22 +39,48 @@ export function GameModal() {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
+  
+  const { account, address, status } = useAccount();
+  const { useDojoStore, client } = useDojoSDK();
+  const entities = useDojoStore((state) => state.entities);
+  const { createRound } = useSystemCalls();
 
-  const handleStartGame = () => {
-    if (!validateForm()) return;
 
-    startGame({
-      genre,
-      difficulty,
-      duration,
-      odds: 3, // Quick game allows 3 attempts
-      wagerAmount: 0,
-      isMultiplayer: false
-    });
-
-    closeModal();
-    router.push('/quick-game');
+  const GENRE_ENUM_MAP: Record<string, string> = {
+    pop: "Pop",
+    rock: "Rock",
+    hiphop: "HipHop",
+    rnb: "Rnb",
   };
+
+
+    const handleStartGame = async () => {
+      if (!validateForm()) return;
+    
+      try {
+        const cairoVariant = GENRE_ENUM_MAP[genre];
+        const genreEnum = new CairoCustomEnum({ [cairoVariant]: {} });
+
+        await createRound(genreEnum);
+    
+        // Update game store (local state)
+        startGame({
+          genre,
+          difficulty,
+          duration,
+          odds: 3,
+          wagerAmount: 0,
+          isMultiplayer: false,
+        });
+    
+        closeModal();
+        router.push("/quick-game");
+      } catch (err) {
+        console.error("Failed to create round:", err);
+        // Optionally show UI error feedback here
+      }
+    };
+    
 
   return (
     <Modal

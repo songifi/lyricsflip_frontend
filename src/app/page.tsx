@@ -5,9 +5,14 @@ import { GameModal } from '@/components/organisms/game-modal';
 import { GameOptions } from '@/components/organisms/game-mode-selection';
 import { WagerModal } from '@/components/organisms/WagerModal';
 import { useModalStore } from '@/store/modal-store';
+import CreateChallenge from '@/components/organisms/create-challange';
+import WaitingForOpponent from '@/components/organisms/waiting-for-opponent';
+import { Modal } from '@/components/organisms/modal';
+import ChallengeModal from '@/components/organisms/challengeModal';
 
 export default function Home() {
   const { openModal } = useModalStore();
+  const { modalType, isOpen, closeModal } = useModalStore();
 
   const handleGameSelect = (gameId: string) => {
     if (gameId === 'quick-game') {
@@ -15,7 +20,9 @@ export default function Home() {
     } else if (gameId === 'single-player') {
       openModal('single-wager');
     } else if (gameId === 'multi-player') {
-      openModal('multi-wager');
+      openModal('create-challenge');
+    } else if (gameId === 'challenge') {
+      openModal('challenge');
     }
   };
 
@@ -27,6 +34,21 @@ export default function Home() {
       {/* Modals */}
       <GameModal />
       <WagerModal />
+      {modalType === 'create-challenge' && isOpen && (
+        <Modal isOpen={isOpen} onClose={closeModal} title="Wager (Multi Player)" description="Create a new multiplayer wager challenge." showHeader={false} showFooter={false}>
+          <CreateChallenge />
+        </Modal>
+      )}
+      {modalType === 'waiting-for-opponent' && isOpen && (
+        <Modal isOpen={isOpen} onClose={closeModal} title="Waiting for Opponent" description="Waiting for other players to join your challenge." showHeader={false} showFooter={false}>
+          <WaitingForOpponent />
+        </Modal>
+      )}
+      {modalType === 'challenge' && isOpen && (
+        <Modal isOpen={isOpen} onClose={closeModal} title="Join a Challenge" description="Enter a challenge code to join an existing game." showHeader={false} showFooter={false}>
+          <ChallengeModal />
+        </Modal>
+      )}
     </main>
   );
 }
