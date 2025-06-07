@@ -1,7 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDojoSDK, useModels } from '@dojoengine/sdk/react';
 import { ModelsMapping, Rounds, RoundPlayer } from '../typescript/models.gen';
 import { useAccount } from '@starknet-react/core';
+import { ToriiQueryBuilder, MemberClause, AndComposeClause } from '@dojoengine/sdk';
+import { SchemaType } from '../typescript/models.gen';
+
+type UnsubscribeFn = () => void;
 
 interface RoundSubscriptionState {
   round: Rounds | null;
@@ -9,115 +13,159 @@ interface RoundSubscriptionState {
   isReady: boolean;
   playersCount: number;
   error: string | null;
-  isLoading: boolean;
 }
 
-export const useRoundSubscription = (roundId: bigint | null) => {
+interface ParsedEntity {
+  models?: {
+    lyricsflip?: {
+      Rounds?: Rounds;
+      RoundPlayer?: RoundPlayer;
+    };
+  };
+}
+
+export const useRoundSubscription = (roundId: string) => {
+  const { sdk } = useDojoSDK();
   const { account } = useAccount();
-  const { useDojoStore } = useDojoSDK();
-  const isSubscribed = useRef(false);
-  const lastProcessedData = useRef<string | null>(null);
-  const isUpdating = useRef(false);
-  
+  const roundModels = useModels(ModelsMapping.Rounds);
+  const playerModels = useModels(ModelsMapping.RoundPlayer);
   const [state, setState] = useState<RoundSubscriptionState>({
     round: null,
     isPlayer: false,
     isReady: false,
     playersCount: 0,
-    error: null,
-    isLoading: false,
+    error: null
   });
+  const subscriptionRef = useRef<(() => void) | null>(null);
+  const isSubscribed = useRef(false);
 
-  // Get store state
-  const entities = useDojoStore((state) => state.entities);
-
-  // Subscribe to round models
-  const roundModels = useModels(ModelsMapping.Rounds);
-
-  // Update subscription state when roundId or account changes
   useEffect(() => {
-    if (!roundId || !account?.address) {
-      isSubscribed.current = false;
-      setState(prev => ({ ...prev, error: null, isLoading: false }));
-      return;
-    }
-    isSubscribed.current = true;
-  }, [roundId, account?.address]);
+    if (!roundId || !account?.address || !sdk) return;
 
-  // Memoize the update function to prevent unnecessary re-renders
-  const updateRoundData = useCallback(() => {
-    if (!roundId || !account?.address || !isSubscribed.current || isUpdating.current) {
-      return;
-    }
+    const setupSubscription = async () => {
+      try {
+        // First query for the round
+        const roundQuery = new ToriiQueryBuilder()
+          .withClause(
+            MemberClause(ModelsMapping.Rounds, "round_id", "Eq", BigInt(roundId)).build()
+          )
+          .includeHashedKeys();
 
-    isUpdating.current = true;
+        // Then query for the player
+        const playerQuery = new ToriiQueryBuilder()
+          .withClause(
+            MemberClause(ModelsMapping.RoundPlayer, "player_to_round_id", "Eq", [account.address, BigInt(roundId)]).build()
+          )
+          .includeHashedKeys();
 
-    try {
-    const roundIdHex = `0x${roundId.toString(16)}`;
+        // Set up subscriptions separately
+        console.log('[useRoundSubscription] roundQuery:', JSON.stringify(roundQuery, null, 2));
+        const [roundEntities, roundSubscription] = await sdk.subscribeEventQuery({
+          query: roundQuery,
+          callback: ({ data, error }) => {
+            if (error) {
+              console.error('[useRoundSubscription] Round subscription error:', error);
+              setState(prev => ({
+                ...prev,
+                error: error instanceof Error ? error.message : 'Subscription error'
+              }));
+              return;
+            }
+            console.log('[useRoundSubscription] Round subscription callback fired. Data:', data);
+            if (data) {
+              const allEntities = Object.values(data);
+              console.log('[useRoundSubscription] All round entities:', allEntities);
+              const roundEntity = allEntities.find(entity => {
+                const roundIdValue = entity.models?.lyricsflip?.Rounds?.round_id;
+                const match = roundIdValue && roundIdValue.toString() === roundId.toString();
+                console.log('[useRoundSubscription] Checking round entity:', entity, 'round_id:', roundIdValue, 'match:', match);
+                return match;
+              });
+              if (roundEntity) {
+                const roundData = roundEntity.models?.lyricsflip?.Rounds as Rounds | undefined;
+                console.log('[useRoundSubscription] Matched round entity:', roundEntity, 'roundData:', roundData);
+                setState(prev => ({
+                  ...prev,
+                  round: roundData || null,
+                  playersCount: Number(roundData?.round.players_count ?? 0),
+                  error: null
+                }));
+              } else {
+                console.warn('[useRoundSubscription] No matching round entity found for roundId:', roundId);
+              }
+            } else {
+              console.warn('[useRoundSubscription] No data received in round subscription callback');
+            }
+          }
+        });
 
-    // Get round data from store
-    const roundEntity = entities[roundIdHex];
-    let roundData = roundEntity?.models?.lyricsflip?.Rounds as Rounds | undefined;
+        console.log('[useRoundSubscription] playerQuery:', JSON.stringify(playerQuery, null, 2));
+        const [playerEntities, playerSubscription] = await sdk.subscribeEventQuery({
+          query: playerQuery,
+          callback: ({ data, error }) => {
+            if (error) {
+              console.error('[useRoundSubscription] Player subscription error:', error);
+              return;
+            }
+            console.log('[useRoundSubscription] Player subscription callback fired. Data:', data);
+            if (data) {
+              const allEntities = Object.values(data);
+              console.log('[useRoundSubscription] All player entities:', allEntities);
+              const playerEntity = allEntities.find(entity => {
+                const playerToRoundId = entity.models?.lyricsflip?.RoundPlayer?.player_to_round_id;
+                const match = playerToRoundId && playerToRoundId[1]?.toString() === roundId.toString() && playerToRoundId[0] === account.address;
+                console.log('[useRoundSubscription] Checking player entity:', entity, 'player_to_round_id:', playerToRoundId, 'match:', match);
+                return match;
+              });
+              if (playerEntity) {
+                const playerData = playerEntity.models?.lyricsflip?.RoundPlayer as RoundPlayer | undefined;
+                console.log('[useRoundSubscription] Matched player entity:', playerEntity, 'playerData:', playerData);
+                setState(prev => ({
+                  ...prev,
+                  isPlayer: true,
+                  isReady: playerData?.ready_state || false,
+                  error: null
+                }));
+              } else {
+                console.warn('[useRoundSubscription] No matching player entity found for roundId:', roundId, 'account:', account.address);
+              }
+            } else {
+              console.warn('[useRoundSubscription] No data received in player subscription callback');
+            }
+          }
+        });
 
-    // If round data doesn't exist in store, try to get it from models
-    if (!roundData && roundModels) {
-      roundData = roundModels[roundIdHex] as Rounds | undefined;
-    }
+        // Store both subscriptions for cleanup
+        subscriptionRef.current = () => {
+          // The subscription objects are callable functions
+          (roundSubscription as unknown as UnsubscribeFn)();
+          (playerSubscription as unknown as UnsubscribeFn)();
+        };
 
-      // Create a data hash to check for actual changes
-      const dataHash = JSON.stringify({
-        roundData,
-        playerData: entities[`${account.address},${roundIdHex}`]?.models?.lyricsflip?.RoundPlayer
-      });
-
-      // Skip if we've already processed this data
-      if (dataHash === lastProcessedData.current) {
-        return;
+        isSubscribed.current = true;
+      } catch (error) {
+        console.error('[useRoundSubscription] Setup error:', error);
+        setState(prev => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to set up subscription'
+        }));
       }
+    };
 
-    // If round data still doesn't exist, show loading state
-    if (!roundData) {
-      setState(prev => ({
-        ...prev,
-        isLoading: true,
-        error: 'Waiting for round data...'
-      }));
-      return;
-    }
+    setupSubscription();
 
-    const playerKey = `${account.address},${roundIdHex}`;
-    const playerEntity = entities[playerKey];
-    const playerData = playerEntity?.models?.lyricsflip?.RoundPlayer as RoundPlayer | undefined;
-
-      // Update the last processed data
-      lastProcessedData.current = dataHash;
-
-    setState(prev => ({
-      ...prev,
-      round: roundData,
-      isPlayer: playerData?.joined || false,
-      isReady: playerData?.ready_state || false,
-      playersCount: Number(roundData.round.players_count),
-      error: null,
-      isLoading: false,
-    }));
-    } finally {
-      isUpdating.current = false;
-    }
-  }, [roundId, account?.address, entities, roundModels]);
-
-  // Update round data when entities or models change
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      updateRoundData();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, [updateRoundData]);
+    // Cleanup subscription on unmount
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current();
+        subscriptionRef.current = null;
+      }
+      isSubscribed.current = false;
+    };
+  }, [roundId, account?.address, sdk]);
 
   return {
     ...state,
-    isSubscribed: isSubscribed.current,
-    refresh: updateRoundData,
+    isSubscribed: isSubscribed.current
   };
 }; 

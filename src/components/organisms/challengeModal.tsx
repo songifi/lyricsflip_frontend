@@ -6,142 +6,170 @@ import { Button } from '../atoms/button';
 import { Input } from '../atoms/input';
 import { Card, CardContent } from '../atoms/card';
 import { useJoinRound } from '@/lib/dojo/hooks/useJoinRound';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { BigNumberish } from 'starknet';
 import { useRoundSubscription } from '@/lib/dojo/hooks/useRoundSubscription';
-import { useDojoSDK } from '@dojoengine/sdk/react';
-import { Rounds } from '@/lib/dojo/typescript/models.gen';
-import { Loader2 } from 'lucide-react';
+import { useRoundQuery } from '@/lib/dojo/hooks/useRoundQuery';
+import { getEntityIdFromKeys } from "@dojoengine/utils";
+import { useStartRound } from '@/lib/dojo/hooks/useStartRound';
 
-export default function ChallengeModal() {
-  const [code, setCode] = useState('');
-  const [roundId, setRoundId] = useState<bigint | null>(null);
+function RoundDetailsView({ roundId }: { roundId: bigint }) {
+  // Comment out subscription for now
+  // const { round, playersCount, isPlayer, isReady, error, isSubscribed } = useRoundSubscription(roundId.toString());
+  const { startRound, isLoading: isStarting, error: startError } = useStartRound();
   const { closeModal } = useModalStore();
-  const { joinRound, isLoading, error, isSuccess, validateRoundId } = useJoinRound();
-  const { round, isPlayer, playersCount, error: subscriptionError, isLoading: isSubscriptionLoading } = useRoundSubscription(roundId);
 
-  useEffect(() => {
-    if (code) {
-      const validationResult = validateRoundId(code);
-      if (validationResult.isValid) {
-        try {
-          // Keep the original hex format if it's a hex string
-          const id = code.startsWith('0x') ? BigInt(code) : BigInt(code);
-          setRoundId(id);
-          console.log('[ChallengeModal] Set round ID:', code); // Log the original format
-        } catch (e) {
-          console.error('[ChallengeModal] Error converting round ID:', e);
-          setRoundId(null);
-        }
-      } else {
-        console.log('[ChallengeModal] Invalid round ID:', validationResult.error);
-        setRoundId(null);
-      }
-    } else {
-      setRoundId(null);
-    }
-  }, [code, validateRoundId]);
+  // Comment out error and loading states for now
+  // if (error) return <div className="text-red-500">{error}</div>;
+  // if (!round) return <div>Loading round details...</div>;
 
-  const handleJoin = async () => {
-    if (!roundId) {
-      console.log('[ChallengeModal] No roundId available');
-      return;
-    }
-    // Keep the original hex format
-    const roundIdHex = roundId.toString(16);
-    console.log('[ChallengeModal] Attempting to join round:', roundIdHex);
+  const handleStartRound = async () => {
     try {
-      await joinRound(roundId);
-      console.log('[ChallengeModal] Join round call completed');
-      // Wait for a short delay to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Check if we're now a player
-      console.log('[ChallengeModal] isPlayer status:', isPlayer);
-      if (isPlayer) {
-        console.log('[ChallengeModal] Closing modal after successful join');
-        closeModal();
-      }
-    } catch (e) {
-      // Error is handled by useJoinRound hook
-      console.error('[ChallengeModal] Failed to join round:', e);
+      await startRound(roundId);
+      // Optionally close the modal after successful start
+      // closeModal();
+    } catch (error) {
+      console.error('Failed to start round:', error);
     }
   };
 
-  const isCodeValid = code && round !== null;
-  const isButtonDisabled = false;
+  return (
+    <div className="space-y-4 mt-4">
+      <h2 className="text-xl font-bold">Join a challenge</h2>
+      <div className="text-gray-500 text-sm mb-2">Invite Code: {roundId.toString()}</div>
+      <div className="text-gray-500 text-sm mb-2">Genre: {/* TODO: Add genre */}</div>
+      {startError && <div className="text-red-500 text-sm">{startError}</div>}
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button variant="outline" onClick={closeModal}>Cancel</Button>
+        <Button 
+          disabled={isStarting} 
+          onClick={handleStartRound}
+        >
+          {isStarting ? 'Starting...' : 'Start Round'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export const ChallengeModal = () => {
+  const { closeModal } = useModalStore();
+  const [code, setCode] = useState('');
+  const [modalStep, setModalStep] = useState<'join' | 'details'>('join');
+  const [joinedRoundId, setJoinedRoundId] = useState<bigint | null>(null);
+
+  const {
+    joinRound,
+    isLoading: isJoining,
+    error: joinError,
+    isSuccess: joinSuccess,
+    reset: resetJoinRoundState,
+    validateRoundId: performFormatValidation,
+    validation
+  } = useJoinRound();
+
+  const isLoading = isJoining;
+  const displayError = joinError;
+
+  useEffect(() => {
+    resetJoinRoundState();
+  }, [resetJoinRoundState]);
+
+  const handleCodeChange = (value: string) => {
+    const newCode = value.trim();
+    setCode(newCode);
+    performFormatValidation(newCode);
+  };
+
+  const handleDirectJoin = async () => {
+    if (!code) {
+      performFormatValidation("");
+      return;
+    }
+
+    if (!validation?.isValid) {
+        console.log("[ChallengeModal] Format validation failed based on hook state. Error should be in joinError.");
+        return;
+    }
+
+    try {
+      let roundIdToJoin: bigint;
+      try {
+        roundIdToJoin = code.startsWith('0x') ? BigInt(code) : BigInt(code);
+      } catch (e) {
+        console.error('[ChallengeModal] Error converting code to BigInt despite validation:', e);
+        alert("Invalid challenge code format. Please enter a valid number or 0x... hex string.");
+        return;
+      }
+
+      console.log('[ChallengeModal] Attempting to directly join round:', roundIdToJoin.toString());
+      await joinRound(roundIdToJoin);
+      setJoinedRoundId(roundIdToJoin);
+      setModalStep('details');
+    } catch (error) {
+      console.error('[ChallengeModal] Failed to join round from direct attempt (error caught in component):', error);
+    }
+  };
+
+  const formatWagerAmount = (amount: BigNumberish) => {
+    return Number(BigInt(amount.toString())) / 1e18;
+  };
+
+  const calculatePayout = (wagerAmount: BigNumberish, maxPlayers: number = 6) => {
+    return (Number(BigInt(wagerAmount.toString())) * maxPlayers) / 1e18;
+  };
+
+  const getRoundStatus = (state: BigNumberish) => {
+    switch (Number(BigInt(state.toString()))) {
+      case 0:
+        return { text: 'Waiting for players', color: 'text-green-500' };
+      case 1:
+        return { text: 'In progress', color: 'text-yellow-500' };
+      case 2:
+        return { text: 'Ended', color: 'text-red-500' };
+      default:
+        return { text: 'Unknown', color: 'text-gray-500' };
+    }
+  };
 
   return (
     <div className="space-y-4 mt-4">
-      <Input
-        placeholder="Enter Challenge Code"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        disabled={isLoading || isSubscriptionLoading}
-      />
-      {(error || subscriptionError) && (
-        <div className="text-red-500 text-sm">
-          {error || subscriptionError}
-        </div>
-      )}
-      {isSubscriptionLoading && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="ml-2">Loading round data...</span>
-        </div>
-      )}
-      {round && !isSubscriptionLoading && (
-        <Card>
-          <CardContent className="space-y-2">
-            <p>
-              <strong>Wager Amount:</strong> {Number(round.round.wager_amount) / 1e18} STRK
-            </p>
-            <p>
-              <strong>Number of Participants:</strong> {playersCount}/6
-            </p>
-            <p>
-              <strong>Payout If Won:</strong>{' '}
-              <span className="text-purple-600">
-                {(Number(round.round.wager_amount) * 6) / 1e18} STRK
-              </span>
-            </p>
-            <p>
-              <strong>Creator:</strong> {round.round.creator.slice(0, 6)}...{round.round.creator.slice(-4)}
-            </p>
-            <p>
-              <strong>Status:</strong>{' '}
-              <span className={round.round.state === BigInt(0) ? 'text-green-500' : 'text-red-500'}>
-                {round.round.state === BigInt(0) ? 'Waiting for players' : 'In progress'}
-              </span>
-            </p>
-            {isPlayer && (
-              <p className="text-green-500">
-                You have joined this round
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={closeModal} disabled={isButtonDisabled}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleJoin} 
-          disabled={isButtonDisabled}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Joining...
-            </>
-          ) : isSubscriptionLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading...
-            </>
-          ) : (
-            'Join Challenge'
+      {modalStep === 'join' ? (
+        <>
+          <Input
+            placeholder="Enter Challenge Code"
+            value={code}
+            onChange={(e) => handleCodeChange(e.target.value)}
+            disabled={isLoading}
+          />
+          {displayError && (
+            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-md">
+              <AlertCircle className="h-4 w-4" />
+              {displayError}
+            </div>
           )}
-        </Button>
-      </div>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={closeModal} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDirectJoin} 
+              disabled={isLoading || !code || !validation?.isValid || !!joinError}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Joining...
+                </>
+              ) : (
+                'Join Challenge'
+              )}
+            </Button>
+          </div>
+        </>
+      ) : (
+        joinedRoundId && <RoundDetailsView roundId={joinedRoundId} />
+      )}
     </div>
   );
 }

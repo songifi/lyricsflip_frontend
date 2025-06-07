@@ -49,8 +49,16 @@ export interface PlayerEvent extends BaseEvent {
   };
 }
 
+// Round Joined Event Interface - matches RoundJoined from models.gen.ts
+export interface RoundJoinedEvent extends BaseEvent {
+  data: {
+    round_id: BigNumberish;
+    player: string;
+  };
+}
+
 // Event Handler Type
-export type EventHandler = (event: RoundEvent | PlayerEvent) => void;
+export type EventHandler = (event: RoundEvent | PlayerEvent | RoundJoinedEvent) => void;
 
 // Event Subscription Type
 export interface EventSubscription {

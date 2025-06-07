@@ -8,7 +8,7 @@ import { useModalStore } from '@/store/modal-store';
 import CreateChallenge from '@/components/organisms/create-challange';
 import WaitingForOpponent from '@/components/organisms/waiting-for-opponent';
 import { Modal } from '@/components/organisms/modal';
-import ChallengeModal from '@/components/organisms/challengeModal';
+import { ChallengeModal } from '@/components/organisms/challengeModal';
 
 export default function Home() {
   const { openModal } = useModalStore();

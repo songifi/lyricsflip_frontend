@@ -6,6 +6,7 @@ import {
   RoundEvent, 
   PlayerEvent, 
   RoundStatus,
+  RoundJoinedEvent,
   EventHandler
 } from './types';
 import { useRoundStore } from './roundStore';
@@ -183,6 +184,17 @@ export const useRoundEvents = () => {
         });
       }
       
+      const joinedModel = entity.models?.lyricsflip?.RoundJoined;
+      if (joinedModel) {
+        console.log('🎯 Found RoundJoined model:', joinedModel);
+        roundEventBus.emit({
+          type: RoundEventType.ROUND_JOINED,
+          timestamp: Date.now(),
+          roundId: joinedModel.round_id.toString(),
+          data: joinedModel,
+        });
+      }
+      
       const createdModel = entity.models?.lyricsflip?.RoundCreated;
       if (createdModel) {
         console.log('🎉 Found RoundCreated model:', createdModel);
@@ -201,6 +213,7 @@ export const useRoundEvents = () => {
 
   // Subscribe to events
   useEffect(() => {
+    console.log('🔧 Setting up event subscriptions');
     const subscriptions = [
       roundEventBus.subscribe({
         type: RoundEventType.ROUND_CREATED,
@@ -213,14 +226,63 @@ export const useRoundEvents = () => {
       roundEventBus.subscribe({
         type: RoundEventType.ROUND_PLAYER,
         handler: handlePlayerEvent
+      }),
+      roundEventBus.subscribe({
+        type: RoundEventType.ROUND_JOINED,
+        handler: (event) => {
+          console.log('🎯 Handling ROUND_JOINED event:', event);
+          try {
+            if (event.type !== RoundEventType.ROUND_JOINED) return;
+            const joinedEvent = event as RoundJoinedEvent;
+            const { data } = joinedEvent;
+            
+            console.log('🎯 Round joined details:', {
+              roundId: data.round_id.toString(),
+              playerAddress: data.player,
+              eventData: data
+            });
+
+            const currentRound = useRoundStore.getState().rounds.get(data.round_id.toString());
+            if (!currentRound) {
+              console.log('⚠️ No existing round found for join event');
+              return;
+            }
+
+            updateRound(data.round_id.toString(), {
+              ...currentRound,
+              players: [
+                ...currentRound.players,
+                {
+                  address: data.player,
+                  joined: true,
+                  readyState: false
+                }
+              ]
+            });
+          } catch (error) {
+            console.error('❌ Error handling round joined event:', error);
+            setError(`Error handling round joined event: ${error}`);
+          }
+        }
       })
     ];
 
+    console.log('🔧 Event subscriptions set up:', {
+      subscriptionCount: subscriptions.length,
+      handlerCounts: {
+        created: roundEventBus.getHandlerCount(RoundEventType.ROUND_CREATED),
+        joined: roundEventBus.getHandlerCount(RoundEventType.ROUND_JOINED),
+        player: roundEventBus.getHandlerCount(RoundEventType.ROUND_PLAYER),
+        round: roundEventBus.getHandlerCount(RoundEventType.ROUND)
+      }
+    });
+
     // Cleanup subscriptions
     return () => {
+      console.log('🧹 Cleaning up event subscriptions');
       subscriptions.forEach(unsubscribe => unsubscribe());
     };
-  }, [handleRoundCreated, handleRoundUpdate, handlePlayerEvent]);
+  }, [handleRoundCreated, handleRoundUpdate, handlePlayerEvent, updateRound, setError]);
 
   // Process initial entities when they change
   useEffect(() => {
