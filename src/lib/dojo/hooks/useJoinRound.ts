@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useSystemCalls } from '../useSystemCalls';
-import { useDojoSDK } from '@dojoengine/sdk/react';
-import { Rounds } from '../typescript/models.gen';
-import { BigNumberish } from 'starknet';
-import { validateRound, validateRoundId, RoundValidationResult } from '../utils/roundValidation';
+import { useDojoSDK, useModels } from '@dojoengine/sdk/react';
+import { validateRoundId, RoundValidationResult } from '../utils/roundValidation';
 import { useAccount } from '@starknet-react/core';
+import { getEntityIdFromKeys } from "@dojoengine/utils";
+import { RoundEventType, PlayerEvent, RoundJoinedEvent, RoundEvent } from '../events/types';
+import { useRoundEventBus } from '../events/eventBus';
+import { ModelsMapping } from '../typescript/models.gen';
 
 interface JoinRoundState {
   isLoading: boolean;
@@ -28,9 +30,12 @@ export const useJoinRound = (): UseJoinRoundReturn => {
   });
 
   const { joinRound: joinRoundCall } = useSystemCalls();
-  const { useDojoStore } = useDojoSDK();
-  const store = useDojoStore((state) => state);
   const { account } = useAccount();
+  const { subscribe } = useRoundEventBus();
+  
+  // Subscribe to network models
+  const roundModels = useModels(ModelsMapping.Rounds);
+  const playerModels = useModels(ModelsMapping.RoundPlayer);
 
   const reset = useCallback(() => {
     console.log('[useJoinRound] Resetting state');
@@ -43,77 +48,69 @@ export const useJoinRound = (): UseJoinRoundReturn => {
   }, []);
 
   const validateRoundIdString = useCallback((roundId: string): RoundValidationResult => {
-    console.log('[useJoinRound] Validating round ID:', { roundId });
+    console.log('[useJoinRound] Validating round ID string format:', { roundId });
     const result = validateRoundId(roundId);
-    console.log('[useJoinRound] Validation result:', result);
-    setState(prev => ({ ...prev, validation: result }));
+    console.log('[useJoinRound] String format validation result:', result);
+    setState(prev => ({
+      ...prev,
+      validation: result,
+      error: result.isValid ? null : (result.error || 'Invalid code format'),
+    }));
     return result;
   }, []);
 
   const joinRound = useCallback(async (roundId: bigint) => {
-    console.log('[useJoinRound] Starting join round process:', { 
+    if (!account?.address) {
+      throw new Error('Account not available');
+    }
+
+    console.log('[useJoinRound] Starting join round process:', {
       roundId: roundId.toString(),
-      accountAddress: account?.address 
+      accountAddress: account.address
     });
 
-    if (!account?.address) {
-      const error = 'Account not available';
-      console.error('[useJoinRound] Error:', error);
-      throw new Error(error);
-    }
-    
-    setState(prev => ({ ...prev, isLoading: true, error: null, isSuccess: false }));
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    // Subscribe to events
+    const eventConfirmation = new Promise<void>((resolve, reject) => {
+      const unsubscribe = subscribe({
+        type: RoundEventType.ROUND_JOINED,
+        handler: (event: RoundEvent | PlayerEvent | RoundJoinedEvent) => {
+          console.log('[useJoinRound] Received ROUND_JOINED event:', event);
+          
+          if (event.type !== RoundEventType.ROUND_JOINED) return;
+          const joinedEvent = event as RoundJoinedEvent;
+          
+          // Check if this is the event we're waiting for
+          console.log('[useJoinRound] Checking ROUND_JOINED event:', {
+            eventRoundId: joinedEvent.data.round_id.toString(),
+            eventPlayer: joinedEvent.data.player,
+            expectedRoundId: roundId.toString(),
+            accountAddress: account.address
+          });
+          
+          if (joinedEvent.data.round_id.toString() === roundId.toString() && 
+              joinedEvent.data.player === account.address) {
+            console.log('[useJoinRound] Matching ROUND_JOINED event found');
+            unsubscribe();
+            resolve();
+          }
+        }
+      });
+    });
 
     try {
-      // Get round data from store
-      const roundIdHex = `0x${roundId.toString(16)}`;
-      console.log('[useJoinRound] Looking for round in store:', { roundIdHex });
-      
-      const round = store.entities[roundIdHex]?.models?.lyricsflip?.Rounds as Rounds | undefined;
-      console.log('[useJoinRound] Found round data:', { 
-        exists: !!round,
-        roundId: roundIdHex,
-        roundData: round ? {
-          state: round.round.state.toString(),
-          playersCount: round.round.players_count.toString(),
-          wagerAmount: round.round.wager_amount.toString()
-        } : null
-      });
-      
-      // Validate round
-      console.log('[useJoinRound] Validating round');
-      const validationResult = validateRound(round);
-      console.log('[useJoinRound] Round validation result:', validationResult);
-      
-      if (!validationResult.isValid) {
-        throw new Error(validationResult.error);
-      }
-
-      // Execute join transaction
+      // 1. Execute the join transaction
       console.log('[useJoinRound] Executing join transaction');
       await joinRoundCall(roundId);
-      console.log('[useJoinRound] Join transaction executed successfully');
       
-      // Wait for store to update
-      console.log('[useJoinRound] Waiting for store update');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 2. Wait for event confirmation
+      console.log('[useJoinRound] Waiting for event confirmation');
+      await eventConfirmation;
       
-      // Verify we're now a player
-      const playerKey = `${account.address},${roundIdHex}`;
-      console.log('[useJoinRound] Verifying player status:', { playerKey });
+      // 3. No manual verification loop - rely on subscription
+      console.log('[useJoinRound] Event confirmed, join successful');
       
-      const playerData = store.entities[playerKey]?.models?.lyricsflip?.RoundPlayer;
-      console.log('[useJoinRound] Player data:', { 
-        exists: !!playerData,
-        joined: playerData?.joined,
-        readyState: playerData?.ready_state
-      });
-      
-      if (!playerData?.joined) {
-        throw new Error('Failed to verify join status');
-      }
-      
-      console.log('[useJoinRound] Join process completed successfully');
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -122,21 +119,16 @@ export const useJoinRound = (): UseJoinRoundReturn => {
       }));
 
     } catch (error) {
-      console.error('[useJoinRound] Error in join process:', {
-        error,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      
+      console.error('[useJoinRound] Error during join process:', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to join round',
-        validation: { isValid: false, error: error instanceof Error ? error.message : 'Failed to join round' },
+        isSuccess: false,
       }));
       throw error;
     }
-  }, [joinRoundCall, store, account?.address]);
+  }, [account?.address, state.validation, subscribe, roundModels, playerModels, joinRoundCall]);
 
   return {
     ...state,

@@ -101,19 +101,20 @@ export default function CreateChallenge() {
       const cairoVariant = GENRE_ENUM_MAP[formData.genre];
       const genreEnum = new CairoCustomEnum({ [cairoVariant]: {} });
       
-      await createRound(genreEnum);
-      console.log("Round created successfully, opening waiting modal");
+      const roundId = await createRound(genreEnum);
+      console.log("Round created successfully with ID:", roundId.toString());
       
-      // Show success toast
+      // Show success toast with round ID
       toast.success('🎉 Round created successfully!', {
-        description: 'Opening waiting room...',
+        description: `Round ID: ${roundId.toString()}`,
         duration: 3000,
       });
       
-      // Close this modal and open waiting modal immediately
+      // Close this modal and open waiting modal with the real round ID
       closeModal();
       setTimeout(() => {
         openModal('waiting-for-opponent', { 
+          roundId: roundId.toString(),
           creatorAddress: account?.address 
         });
       }, 100);
