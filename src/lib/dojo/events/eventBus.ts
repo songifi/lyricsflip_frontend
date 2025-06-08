@@ -4,6 +4,7 @@ import {
   RoundEventType, 
   RoundEvent, 
   PlayerEvent, 
+  RoundJoinedEvent,
   EventHandler, 
   EventSubscription,
   EventBusOptions 
@@ -18,13 +19,13 @@ class RoundEventBus {
   private constructor(options: EventBusOptions = {}) {
     this.handlers = new Map();
     this.options = {
-      debug: false,
+      debug: true,
       maxListeners: 10,
       retryAttempts: 5,
       retryDelay: 1000,
       ...options
     };
-    this.debug = this.options.debug || false;
+    this.debug = true;
   }
 
   public static getInstance(options?: EventBusOptions): RoundEventBus {
@@ -35,9 +36,7 @@ class RoundEventBus {
   }
 
   private log(...args: any[]) {
-    if (this.debug) {
-      console.log('[RoundEventBus]', ...args);
-    }
+    console.log('[RoundEventBus]', ...args);
   }
 
   public subscribe(subscription: EventSubscription): () => void {
@@ -54,31 +53,40 @@ class RoundEventBus {
     }
 
     handlers.add(handler);
-    this.log(`Subscribed to ${type} events`);
+    this.log(`Subscribed to ${type} events. Current handler count: ${handlers.size}`);
 
     // Return unsubscribe function
     return () => {
       const handlers = this.handlers.get(type);
       if (handlers) {
         handlers.delete(handler);
-        this.log(`Unsubscribed from ${type} events`);
+        this.log(`Unsubscribed from ${type} events. Remaining handlers: ${handlers.size}`);
       }
     };
   }
 
-  public emit(event: RoundEvent | PlayerEvent): void {
+  public emit(event: RoundEvent | PlayerEvent | RoundJoinedEvent): void {
     const { type } = event;
     const handlers = this.handlers.get(type);
+
+    this.log(`Emitting ${type} event:`, {
+      event,
+      handlerCount: handlers?.size || 0,
+      hasHandlers: !!handlers,
+      eventType: type,
+      eventData: event.data
+    });
 
     if (!handlers) {
       this.log(`No handlers for event type: ${type}`);
       return;
     }
 
-    this.log(`Emitting ${type} event:`, event);
     handlers.forEach(handler => {
       try {
+        this.log(`Calling handler for ${type} event with data:`, event.data);
         handler(event);
+        this.log(`Handler for ${type} event completed successfully`);
       } catch (error) {
         console.error(`[RoundEventBus] Error in event handler for ${type}:`, error);
       }
