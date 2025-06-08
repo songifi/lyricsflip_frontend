@@ -1,9 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDojoSDK, useModels } from '@dojoengine/sdk/react';
 import { ModelsMapping, Rounds, RoundPlayer } from '../typescript/models.gen';
 import { useAccount } from '@starknet-react/core';
-import { BigNumberish } from 'starknet';
-import { getEntityIdFromKeys } from "@dojoengine/utils";
 
 interface RoundQueryState {
   round: Rounds | null;
@@ -14,11 +12,20 @@ interface RoundQueryState {
 }
 
 interface UseRoundQueryReturn extends RoundQueryState {
-  queryRound: (roundId: bigint) => Promise<void>;
+  queryRound: (roundId: bigint) => void;
 }
+
+// Helper function to safely stringify objects with BigInt values
+const safeStringify = (obj: any) => {
+  return JSON.stringify(obj, (key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  );
+};
 
 export const useRoundQuery = (): UseRoundQueryReturn => {
   const { account } = useAccount();
+  const rounds = useModels(ModelsMapping.Rounds);
+  const players = useModels(ModelsMapping.RoundPlayer);
   
   const [state, setState] = useState<RoundQueryState>({
     round: null,
@@ -28,89 +35,108 @@ export const useRoundQuery = (): UseRoundQueryReturn => {
     error: null,
   });
 
-  // Subscribe to round models for network queries (this fetches from blockchain)
-  const roundModels = useModels(ModelsMapping.Rounds);
-  const playerModels = useModels(ModelsMapping.RoundPlayer);
-
-  const queryRound = useCallback(async (roundId: bigint) => {
+  const queryRound = useCallback((roundId: bigint) => {
+    console.log('[useRoundQuery] Querying round:', roundId.toString());
+    console.log('[useRoundQuery] Available rounds:', safeStringify(rounds));
+    console.log('[useRoundQuery] Available players:', safeStringify(players));
+    
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-    try {
-      // Use Dojo's entity ID calculation for network queries (matches how Torii stores data)
-      const roundEntityId = getEntityIdFromKeys([roundId]);
-      const roundIdHex = `0x${roundId.toString(16)}`;
-      
-      console.log('[useRoundQuery] Querying round from NETWORK:', { 
-        roundId: roundId.toString(), 
-        roundIdHex,
-        roundEntityId
-      });
+    // Debug the structure of rounds
+    console.log('[useRoundQuery] Rounds structure:', {
+      isArray: Array.isArray(rounds),
+      keys: Object.keys(rounds),
+      firstKey: Object.keys(rounds)[0],
+      firstValue: rounds[Object.keys(rounds)[0]]
+    });
 
-      // Query from network models using Dojo's entity ID format
-      let roundData: Rounds | undefined;
-      
-      if (roundModels) {
-        // Primary: Use Dojo's entity ID (matches Torii storage)
-        roundData = roundModels[roundEntityId] as Rounds | undefined;
-        console.log('[useRoundQuery] Network query result:', { 
-          found: !!roundData,
-          entityId: roundEntityId 
-        });
-        
-        // Fallback: Try hex format (for optimistic updates)
-        if (!roundData) {
-          roundData = roundModels[roundIdHex] as Rounds | undefined;
-          console.log('[useRoundQuery] Fallback hex query result:', { 
-            found: !!roundData,
-            hexKey: roundIdHex 
+    // Find the matching round - handle the array structure
+    const roundData = Object.entries(rounds[0] || {}).find(([key, value]) => {
+      console.log('[useRoundQuery] Checking round:', { key, value: safeStringify(value) });
+      return value?.round_id?.toString() === roundId.toString();
+    })?.[1] as Rounds | undefined;
+
+    console.log('[useRoundQuery] Found round data:', safeStringify(roundData));
+
+    // Check if player is in the round - handle the array structure
+    const isPlayerInRound = account?.address ? (
+      Object.entries(players[0] || {}).some(
+        ([key, player]) => {
+          console.log('[useRoundQuery] Checking player:', { 
+            key, 
+            player: safeStringify(player),
+            accountAddress: account.address,
+            playerAddress: player?.player_to_round_id?.[0],
+            roundId: roundId.toString(),
+            playerRoundId: player?.player_to_round_id?.[1]?.toString()
           });
+          const isPlayerInRound = player?.player_to_round_id?.[0]?.toLowerCase() === account.address.toLowerCase() && 
+                                player?.player_to_round_id?.[1]?.toString() === roundId.toString();
+          console.log('[useRoundQuery] Is player in round:', isPlayerInRound);
+          return isPlayerInRound;
         }
-      }
+      )
+    ) : false;
 
-      // Check if current user is a player in this round
-      let isPlayer = false;
-      if (account?.address && playerModels) {
-        // Use the same key format as useJoinRound
-        const playerKey = `${account.address},${roundIdHex}`;
-        const playerData = playerModels[playerKey] as RoundPlayer | undefined;
-        
-        isPlayer = playerData?.joined || false;
-      }
+    // If player is in round but round data isn't available yet, set a polling interval
+    if (isPlayerInRound && !roundData) {
+      console.log('[useRoundQuery] Player is in round but round data not available yet, setting up polling');
+      const pollInterval = setInterval(() => {
+        console.log('[useRoundQuery] Polling for round data...');
+        queryRound(roundId);
+      }, 10000); // Poll every second
 
-      if (!roundData) {
-        console.log('[useRoundQuery] Round not found in network models');
-        setState(prev => ({ 
-          ...prev, 
-          isLoading: false, 
-          error: 'Round not found. Please check the invite code and try again.' 
-        }));
-        return;
-      }
-
-      console.log('[useRoundQuery] Round found successfully:', {
-        roundId: roundData.round_id?.toString(),
-        state: roundData.round.state?.toString(),
-        playersCount: roundData.round.players_count?.toString()
-      });
+      // Clear interval after 10 seconds to prevent infinite polling
+      setTimeout(() => {
+        clearInterval(pollInterval);
+      }, 10000);
 
       setState(prev => ({
         ...prev,
+        isLoading: true,
+        error: 'Round data is being synced...',
+        isPlayer: true, // Set isPlayer to true since we know they're in the round
+        playersCount: 0,
+      }));
+      return;
+    }
+
+    // If we have round data, update state
+    if (roundData) {
+      const isPlayer = isPlayerInRound || 
+        (account?.address && roundData.round.creator.toLowerCase() === account.address.toLowerCase());
+
+      setState({
         round: roundData,
-        isPlayer,
-        playersCount: Number(BigInt(roundData.round.players_count.toString())),
+        isPlayer: Boolean(isPlayer),
+        playersCount: Number(roundData.round.players_count ?? 0),
         isLoading: false,
         error: null,
-      }));
-
-    } catch (error) {
-      console.error('[useRoundQuery] Error fetching round:', error);
+      });
+    } else {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch round data',
+        error: 'No round found',
+        isPlayer: false,
+        playersCount: 0,
       }));
     }
-  }, [roundModels, playerModels, account?.address]);
+  }, [account?.address, rounds, players]);
+
+  // Set up polling to check for round data
+  useEffect(() => {
+    if (state.isPlayer && !state.round) {
+      const pollInterval = setInterval(() => {
+        const roundId = state.round?.round_id;
+        if (roundId) {
+          queryRound(BigInt(roundId.toString()));
+        }
+      }, 1000); // Poll every second
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [state.isPlayer, state.round, queryRound]);
 
   return {
     ...state,

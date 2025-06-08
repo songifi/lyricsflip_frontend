@@ -14,14 +14,17 @@ import { getEntityIdFromKeys } from "@dojoengine/utils";
 import { useStartRound } from '@/lib/dojo/hooks/useStartRound';
 
 function RoundDetailsView({ roundId }: { roundId: bigint }) {
-  // Comment out subscription for now
-  // const { round, playersCount, isPlayer, isReady, error, isSubscribed } = useRoundSubscription(roundId.toString());
+  const { round, playersCount, isLoading, error: roundError, queryRound } = useRoundQuery();
   const { startRound, isLoading: isStarting, error: startError } = useStartRound();
   const { closeModal } = useModalStore();
 
-  // Comment out error and loading states for now
-  // if (error) return <div className="text-red-500">{error}</div>;
-  // if (!round) return <div>Loading round details...</div>;
+  useEffect(() => {
+    // Query round and set up subscription
+    const queryAndSubscribe = async () => {
+      await queryRound(roundId);
+    };
+    queryAndSubscribe();
+  }, [roundId]);
 
   const handleStartRound = async () => {
     try {
@@ -37,12 +40,15 @@ function RoundDetailsView({ roundId }: { roundId: bigint }) {
     <div className="space-y-4 mt-4">
       <h2 className="text-xl font-bold">Join a challenge</h2>
       <div className="text-gray-500 text-sm mb-2">Invite Code: {roundId.toString()}</div>
+      <div className="text-gray-500 text-sm mb-2">Players: {playersCount}</div>
       <div className="text-gray-500 text-sm mb-2">Genre: {/* TODO: Add genre */}</div>
-      {startError && <div className="text-red-500 text-sm">{startError}</div>}
+      {(roundError || startError) && (
+        <div className="text-red-500 text-sm">{roundError || startError}</div>
+      )}
       <div className="flex justify-end space-x-2 pt-4">
         <Button variant="outline" onClick={closeModal}>Cancel</Button>
         <Button 
-          disabled={isStarting} 
+          disabled={isStarting || isLoading} 
           onClick={handleStartRound}
         >
           {isStarting ? 'Starting...' : 'Start Round'}
@@ -53,7 +59,7 @@ function RoundDetailsView({ roundId }: { roundId: bigint }) {
 }
 
 export const ChallengeModal = () => {
-  const { closeModal } = useModalStore();
+  const { closeModal, openModal } = useModalStore();
   const [code, setCode] = useState('');
   const [modalStep, setModalStep] = useState<'join' | 'details'>('join');
   const [joinedRoundId, setJoinedRoundId] = useState<bigint | null>(null);

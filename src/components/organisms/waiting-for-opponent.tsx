@@ -4,7 +4,7 @@ import { useModalStore } from '@/store/modal-store';
 import { useAccount } from "@starknet-react/core";
 import { ErrorBoundary } from '../atoms/error-boundary';
 import LoadingSpinner from '../atoms/loading-spinner';
-import { useRoundSubscription } from '../../lib/dojo/hooks/useRoundSubscription';
+import { useRoundQuery } from '@/lib/dojo/hooks/useRoundQuery';
 import { useStartRound } from '@/lib/dojo/hooks/useStartRound';
 
 interface WaitingForOpponentProps {
@@ -17,7 +17,10 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
   const { startRound, isLoading: isStarting, error: startError } = useStartRound();
   
   const roundId = modalPayload?.roundId;
-  const creatorAddress = modalPayload?.creatorAddress;
+  
+  const { round, playersCount, isLoading: isRoundLoading, error: roundError, queryRound } = useRoundQuery();
+  
+  const creatorAddress = round?.round.creator;
   
   const [isCopied, setIsCopied] = useState(false);
   const totalPlayers = 2;
@@ -25,12 +28,16 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
   const mountedRef = useRef(true);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { playersCount, error: roundError } = useRoundSubscription(roundId ? roundId : null);
+  useEffect(() => {
+    if (roundId) {
+      queryRound(BigInt(roundId));
+    }
+  }, [roundId, queryRound]);
 
   useEffect(() => {
     console.log('WaitingForOpponent mounted');
     console.log('roundId from modalPayload:', roundId);
-    console.log('creatorAddress:', creatorAddress);
+    console.log('creatorAddress (from round):', creatorAddress);
     console.log('current account:', account?.address);
 
     if (!roundId) {
@@ -136,14 +143,14 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  if (error || startError) {
+  if (error || startError || roundError) {
     return (
       <div className="p-4 rounded-lg bg-red-50 border border-red-200">
         <h2 className="text-lg font-semibold text-red-800 mb-2">
           Error
         </h2>
         <p className="text-sm text-red-600 mb-4">
-          {error || startError}
+          {error || startError || roundError}
         </p>
         <button
           onClick={() => setError(null)}

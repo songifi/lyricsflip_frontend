@@ -2,7 +2,7 @@ import { getEntityIdFromKeys } from "@dojoengine/utils";
 import { v4 as uuidv4 } from "uuid";
 import { useAccount } from "@starknet-react/core";
 import { useDojoSDK } from "@dojoengine/sdk/react";
-import { CairoCustomEnum } from "starknet";
+import { CairoCustomEnum, ByteArray } from "starknet";
 import { roundEventBus } from "./events/eventBus";
 import { RoundEventType, RoundStatus } from "./events/types";
 import { useRoundStore } from './events/roundStore';
@@ -118,223 +118,76 @@ export const useSystemCalls = () => {
 		}
 	};
 
-	const joinRound = async (roundId: bigint) => {
-		if (!account) throw new Error("Account not available");
-		const transactionId = uuidv4();
-
-		console.log(`[JoinRound] Starting join operation for round ${roundId}`, {
-			roundId: roundId.toString(),
-			roundIdHex: `0x${roundId.toString(16)}`,
-			accountAddress: account.address
-		});
-		
-		// Apply optimistic update
-		state.applyOptimisticUpdate(transactionId, (draft: any) => {
-			// Only update players_count if the round entity exists
-			const roundEntityId = getEntityIdFromKeys([roundId]);
-			const existingRound = draft.entities[roundEntityId];
-			
-			console.log('[JoinRound] Current store state:', {
-				roundEntityId,
-				existingRound,
-				allEntities: Object.keys(draft.entities)
-			});
-			
-			if (existingRound?.models?.lyricsflip?.Rounds) {
-				const currentCount = Number(existingRound.models.lyricsflip.Rounds.round.players_count);
-				existingRound.models.lyricsflip.Rounds.round.players_count = BigInt(currentCount + 1);
-				console.log(`[JoinRound] Updated round ${roundId} players_count to ${currentCount + 1}`);
-			} else {
-				// Create the round entity if it doesn't exist
-				draft.entities[roundEntityId] = {
-					entityId: roundEntityId,
-					models: {
-						lyricsflip: {
-							Rounds: {
-								round_id: roundId,
-								round: {
-									creator: account.address,
-									genre: 0,
-									wager_amount: 0,
-									start_time: BigInt(Date.now()),
-									state: 0,
-									end_time: 0,
-									next_card_index: 0,
-									players_count: 1,
-									ready_players_count: 0,
-								}
-							}
-						}
-					}
-				};
-				console.log(`[JoinRound] Created new round entity ${roundEntityId}`);
-			}
-
-			// Create the RoundPlayer entity for the joining player
-			const playerEntityId = getEntityIdFromKeys([BigInt(account.address), roundId]);
-			if (!draft.entities[playerEntityId]) {
-				console.log(`[JoinRound] Creating player entity ${playerEntityId}`);
-				draft.entities[playerEntityId] = {
-					entityId: playerEntityId,
-					models: {
-						lyricsflip: {
-							RoundPlayer: {
-								player_to_round_id: [account.address, roundId],
-								joined: true,
-								ready_state: false,
-							},
-						},
-					},
-				};
-			}
-
-			// Create the RoundJoined event entity
-			const eventEntityId = getEntityIdFromKeys([roundId, BigInt(Date.now())]);
-			if (!draft.entities[eventEntityId]) {
-				console.log(`[JoinRound] Creating RoundJoined event entity ${eventEntityId}`);
-				draft.entities[eventEntityId] = {
-					entityId: eventEntityId,
-					models: {
-						lyricsflip: {
-							RoundJoined: {
-								round_id: roundId,
-								player: account.address,
-							},
-						},
-					},
-				};
-			}
-
-			// Log the state after updates
-			console.log(`[JoinRound] Updated store state:`, {
-				roundEntity: draft.entities[roundEntityId],
-				playerEntity: draft.entities[playerEntityId],
-				eventEntity: draft.entities[eventEntityId],
-				allEntities: Object.keys(draft.entities)
-			});
-
-			// Sync with our custom round store
-			const roundData = draft.entities[roundEntityId]?.models?.lyricsflip?.Rounds;
-			const playerData = draft.entities[playerEntityId]?.models?.lyricsflip?.RoundPlayer;
-			
-			if (roundData && playerData) {
-				roundStore.updateRound(roundId.toString(), {
-					players: [{
-						address: account.address,
-						joined: playerData.joined,
-						readyState: playerData.ready_state
-					}],
-					playersCount: Number(roundData.round.players_count),
-					status: roundData.round.state as unknown as RoundStatus
-				});
-				console.log(`[JoinRound] Synced with round store for round ${roundId}`);
-			}
-		});
-
-		// Store entity IDs for later use
-		const roundEntityId = getEntityIdFromKeys([roundId]);
-		const playerEntityId = getEntityIdFromKeys([BigInt(account.address), roundId]);
+	const joinRound = async (roundId: string) => {
+		if (!account?.address) {
+			throw new Error('Account not available');
+		}
 
 		try {
-			console.log(`[JoinRound] Executing join transaction for round ${roundId}`, {
-				roundId: roundId.toString(),
-				roundIdHex: `0x${roundId.toString(16)}`,
-				accountAddress: account.address
+			const roundIdHex = `0x${BigInt(roundId).toString(16)}`;
+			console.log('[JoinRound] Starting join operation for round', roundId, {
+				roundId,
+				roundIdHex,
+				accountAddress: account.address,
 			});
-			await client.actions.joinRound(account, roundId);
-			console.log(`[JoinRound] Successfully joined round ${roundId}`);
 
-			// Emit the RoundJoined event
+			// Execute the transaction
+			console.log('[JoinRound] Executing join transaction for round', roundId, {
+				roundId,
+				roundIdHex,
+				accountAddress: account.address,
+			});
+			const tx = await client.actions.joinRound(account, BigInt(roundId));
+			console.log('[JoinRound] Successfully joined round', roundId);
+
+			// Update round store
+			const currentRound = roundStore.rounds.get(roundId);
+			if (currentRound) {
+				roundStore.updateRound(roundId, {
+					...currentRound,
+					players: [
+						...currentRound.players,
+						{
+							address: account.address,
+							joined: true,
+							readyState: false
+						}
+					],
+					playersCount: currentRound.playersCount + 1
+				});
+			} else {
+				// If round doesn't exist in store, add it
+				roundStore.addRound(roundId, {
+					id: roundId,
+					status: RoundStatus.WAITING,
+					genre: '0',
+					wagerAmount: '0',
+					nextCardIndex: 0,
+					playersCount: 1,
+					readyPlayersCount: 0,
+					players: [{
+						address: account.address,
+						joined: true,
+						readyState: false
+					}]
+				});
+			}
+
+			// Emit event
 			roundEventBus.emit({
 				type: RoundEventType.ROUND_JOINED,
 				timestamp: Date.now(),
-				roundId: roundId.toString(),
+				roundId: roundId,
 				data: {
-					round_id: roundId,
-					player: account.address
+					round_id: BigInt(roundId),
+					player: account.address,
 				}
 			});
-			console.log(`[JoinRound] Emitted ROUND_JOINED event for round ${roundId}`);
+			console.log('[JoinRound] Emitted ROUND_JOINED event for round', roundId);
 
-			// Confirm the optimistic update
-			state.confirmTransaction(transactionId);
-			console.log(`[JoinRound] Confirmed optimistic update for transaction ${transactionId}`);
-
-			// Ensure the entities are still in the store after confirmation
-			state.applyOptimisticUpdate(transactionId, (draft: any) => {
-				// Re-apply the entities to ensure they persist
-				if (!draft.entities[roundEntityId]) {
-					draft.entities[roundEntityId] = {
-						entityId: roundEntityId,
-						models: {
-							lyricsflip: {
-								Rounds: {
-									round_id: roundId,
-									round: {
-										creator: account.address,
-										genre: 0,
-										wager_amount: 0,
-										start_time: BigInt(Date.now()),
-										state: 0,
-										end_time: 0,
-										next_card_index: 0,
-										players_count: 1,
-										ready_players_count: 0,
-									}
-								}
-							}
-						}
-					};
-				}
-
-				if (!draft.entities[playerEntityId]) {
-					draft.entities[playerEntityId] = {
-						entityId: playerEntityId,
-						models: {
-							lyricsflip: {
-								RoundPlayer: {
-									player_to_round_id: [account.address, roundId],
-									joined: true,
-									ready_state: false,
-								},
-							},
-						},
-					};
-				}
-			});
-
-			// Verify the entities exist in the store after confirmation
-			const roundEntity = state.entities[roundEntityId];
-			const playerEntity = state.entities[playerEntityId];
-			
-			console.log(`[JoinRound] Verified store state after confirmation:`, {
-				roundEntity,
-				playerEntity,
-				allEntities: Object.keys(state.entities)
-			});
-
-			// Sync with our custom round store
-			if (roundEntity?.models?.lyricsflip?.Rounds && playerEntity?.models?.lyricsflip?.RoundPlayer) {
-				roundStore.updateRound(roundId.toString(), {
-					players: [{
-						address: account.address,
-						joined: playerEntity.models.lyricsflip.RoundPlayer.joined,
-						readyState: playerEntity.models.lyricsflip.RoundPlayer.ready_state
-					}],
-					playersCount: Number(roundEntity.models.lyricsflip.Rounds.round.players_count),
-					status: roundEntity.models.lyricsflip.Rounds.round.state as unknown as RoundStatus
-				});
-				console.log(`[JoinRound] Synced with round store for round ${roundId}`);
-			}
-
+			return tx;
 		} catch (error) {
-			console.error(`[JoinRound] Error joining round ${roundId}:`, {
-				error,
-				roundId: roundId.toString(),
-				roundIdHex: `0x${roundId.toString(16)}`,
-				accountAddress: account.address
-			});
-			state.revertOptimisticUpdate(transactionId);
+			console.error('[JoinRound] Error joining round:', error);
 			throw error;
 		}
 	};
@@ -373,10 +226,71 @@ export const useSystemCalls = () => {
 			state.confirmTransaction(transactionId);
 		}
 	};
-  
+
+	const addLyricsCard = async (genre: CairoCustomEnum, artist: string, title: string, year: number, lyrics: string): Promise<void> => {
+		if (!account) throw new Error("Account not available");
+		const transactionId = uuidv4();
+
+		try {
+			console.log('[AddLyricsCard] Adding new lyrics card...', {
+				genre: genre.activeVariant(),
+				artist,
+				title,
+				year,
+				lyricsLength: lyrics.length
+			});
+
+			// Convert lyrics to bytes using TextEncoder
+			const encoder = new TextEncoder();
+			const lyricsBytes = encoder.encode(lyrics);
+			
+			await client.actions.addLyricsCard(account, genre, artist, title, year, lyricsBytes);
+			console.log('[AddLyricsCard] Successfully added lyrics card');
+		} catch (error) {
+			console.error('[AddLyricsCard] Error adding lyrics card:', error);
+			throw error;
+		}
+	};
+
+	const isRoundPlayer = async (roundId: bigint, playerAddress: string): Promise<boolean> => {
+		if (!account) throw new Error("Account not available");
+
+		try {
+			console.log('[IsRoundPlayer] Checking if player is in round...', {
+				roundId: roundId.toString(),
+				playerAddress
+			});
+
+			const result = await client.actions.isRoundPlayer(roundId, playerAddress);
+			console.log('[IsRoundPlayer] Result:', result);
+			return result;
+		} catch (error) {
+			console.error('[IsRoundPlayer] Error checking player:', error);
+			throw error;
+		}
+	};
+
+	const getRoundId = async (): Promise<bigint> => {
+		if (!account) throw new Error("Account not available");
+
+		try {
+			console.log('[GetRoundId] Fetching current round ID...');
+			const result = await client.actions.getRoundId();
+			console.log('[GetRoundId] Result:', result);
+			return BigInt(result[0] || result.toString());
+		} catch (error) {
+			console.error('[GetRoundId] Error fetching round ID:', error);
+			throw error;
+		}
+	};
+
 	return {
 		createRound,
 		joinRound,
 		startRound,
+		addLyricsCard,
+		isRoundPlayer,
+		getRoundId,
+		client,
 	};
 };
