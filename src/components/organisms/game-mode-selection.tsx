@@ -61,22 +61,13 @@ interface GameOptionsProps {
 }
 
 export function GameOptions({ onSelectGame }: GameOptionsProps) {
-  const handleGameSelect = (game: GameOption) => {
-    // Store selected game mode in localStorage
-    localStorage.setItem('selectedGameMode', game.id);
-    
-    if (onSelectGame) {
-      onSelectGame(game.id);
-    }
-  };
-
   return (
     <div className="grid gap-5 sm:grid-cols-2 w-full">
       {gameOptions.map((game) => (
         <GameCard
           key={game.id}
           game={game}
-          onSelect={() => handleGameSelect(game)}
+          onSelect={onSelectGame ? () => onSelectGame(game.id) : undefined}
         />
       ))}
     </div>

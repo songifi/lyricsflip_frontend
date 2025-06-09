@@ -2,11 +2,7 @@ import { Copy, Lightbulb, X } from 'lucide-react';
 // import LoadingSpinner from '../atoms/loading-spiner';
 import { useState, useEffect } from 'react';
 
-interface WaitingForOpponentProps {
-  onStart?: () => void;
-}
-
-export default function WaitingForOpponent({ onStart }: WaitingForOpponentProps) {
+export default function WaitingForOpponent() {
   const [timeLeft, setTimeLeft] = useState(120);
   const [playersJoined, setPlayersJoined] = useState(1);
   const [totalPlayers, setTotalPlayers] = useState(2);
@@ -142,7 +138,7 @@ export default function WaitingForOpponent({ onStart }: WaitingForOpponentProps)
             {playersJoined === totalPlayers && (
               <button
                 className="mt-4 text-[16px] font-[500] w-full max-w-[200px] hover:bg-transparent hover:border border-[#9747FF] hover:text-[#9747FF] transition-colors duration-200 rounded-full bg-[#9747FF] text-white py-[12px]"
-                onClick={onStart}
+                onClick={() => console.log('Starting game...')}
               >
                 Start Game
               </button>

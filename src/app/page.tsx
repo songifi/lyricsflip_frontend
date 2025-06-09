@@ -13,10 +13,9 @@ export default function Home() {
     if (gameId === 'quick-game') {
       openModal('game');
     } else if (gameId === 'single-player') {
-      openModal('single-wager');
-    } else if (gameId === 'multi-player') {
-      openModal('multi-wager');
+      openModal('wager');
     }
+    // Add handlers for other game types as needed
   };
 
   return (
