@@ -8,31 +8,24 @@ import { Card, CardContent } from '../atoms/card';
 import { useJoinRound } from '@/lib/dojo/hooks/useJoinRound';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { BigNumberish } from 'starknet';
-import { useRoundSubscription } from '@/lib/dojo/hooks/useRoundSubscription';
-import { useRoundQuery } from '@/lib/dojo/hooks/useRoundQuery';
-import { getEntityIdFromKeys } from "@dojoengine/utils";
-import { useStartRound } from '@/lib/dojo/hooks/useStartRound';
+import { useRoundActivation } from '@/lib/dojo/hooks/useRoundActivation';
+import { RoundStatus } from '@/lib/dojo/types';
 
 function RoundDetailsView({ roundId }: { roundId: bigint }) {
-  const { round, playersCount, isLoading, error: roundError, queryRound } = useRoundQuery();
-  const { startRound, isLoading: isStarting, error: startError } = useStartRound();
+  const { round, playersCount, isLoading, error, ensureActive, goToGame, isActive } = useRoundActivation({ roundId });
   const { closeModal } = useModalStore();
-
-  useEffect(() => {
-    // Query round and set up subscription
-    const queryAndSubscribe = async () => {
-      await queryRound(roundId);
-    };
-    queryAndSubscribe();
-  }, [roundId]);
 
   const handleStartRound = async () => {
     try {
-      await startRound(roundId);
-      // Optionally close the modal after successful start
-      // closeModal();
+      const result = await ensureActive(roundId);
+      console.log('[ChallengeModal] Round activation result:', result);
+      
+      // Close modal first, then navigate
+      closeModal();
+      goToGame(roundId);
     } catch (error) {
       console.error('Failed to start round:', error);
+      // Error is already exposed via the error state from useRoundActivation
     }
   };
 
@@ -42,16 +35,16 @@ function RoundDetailsView({ roundId }: { roundId: bigint }) {
       <div className="text-gray-500 text-sm mb-2">Invite Code: {roundId.toString()}</div>
       <div className="text-gray-500 text-sm mb-2">Players: {playersCount}</div>
       <div className="text-gray-500 text-sm mb-2">Genre: {/* TODO: Add genre */}</div>
-      {(roundError || startError) && (
-        <div className="text-red-500 text-sm">{roundError || startError}</div>
+      {error && (
+        <div className="text-red-500 text-sm">{error}</div>
       )}
       <div className="flex justify-end space-x-2 pt-4">
         <Button variant="outline" onClick={closeModal}>Cancel</Button>
         <Button 
-          disabled={isStarting || isLoading} 
+          disabled={isLoading} 
           onClick={handleStartRound}
         >
-          {isStarting ? 'Starting...' : 'Start Round'}
+          {isLoading ? 'Starting...' : 'Start Round'}
         </Button>
       </div>
     </div>
@@ -127,11 +120,11 @@ export const ChallengeModal = () => {
 
   const getRoundStatus = (state: BigNumberish) => {
     switch (Number(BigInt(state.toString()))) {
-      case 0:
+      case RoundStatus.WAITING:
         return { text: 'Waiting for players', color: 'text-green-500' };
-      case 1:
+      case RoundStatus.IN_PROGRESS:
         return { text: 'In progress', color: 'text-yellow-500' };
-      case 2:
+      case RoundStatus.ENDED:
         return { text: 'Ended', color: 'text-red-500' };
       default:
         return { text: 'Unknown', color: 'text-gray-500' };

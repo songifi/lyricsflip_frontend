@@ -1,5 +1,5 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { LyricCard } from '@/components/organisms/LyricCard';
 import { StatisticsPanel } from '@/components/molecules/statistics-panel';
@@ -20,10 +20,16 @@ interface SongOption {
 
 export default function MultiplayerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { modalPayload } = useModalStore();
   
-  // Get round ID from modal payload or URL params
-  const roundId = modalPayload?.roundId ? BigInt(modalPayload.roundId) : null;
+  // 🚀 KEY ADDITION: Get round ID from URL params OR modal payload
+  const urlRoundId = searchParams?.get('roundId');
+  const modalRoundId = modalPayload?.roundId;
+  const roundId = urlRoundId || modalRoundId;
+
+  // Convert to BigInt if we have a roundId
+  const roundIdBigInt = roundId ? BigInt(roundId) : null;
   
   // Use contract-based multiplayer game instead of mock
   const {
@@ -40,7 +46,7 @@ export default function MultiplayerPage() {
     totalAnswers,
     isLoading,
     error
-  } = useMultiplayerGame(roundId!);
+  } = useMultiplayerGame(roundIdBigInt!);
 
   // Set up real-time subscriptions
   const { subscribeToGameplay, unsubscribeFromGameplay, isSubscribed } = useGameplaySubscriptions();
@@ -51,36 +57,55 @@ export default function MultiplayerPage() {
 
   // Validate round ID
   useEffect(() => {
-    if (!roundId) {
+    if (!roundIdBigInt) {
       console.error('No round ID provided, redirecting to home');
       router.push('/');
       return;
     }
-  }, [roundId, router]);
+  }, [roundIdBigInt, router]);
 
   // Set up subscriptions when component mounts
   useEffect(() => {
-    if (roundId) {
-      subscribeToGameplay(roundId, {
-        onRoundStateChange: (roundData) => {
-          console.log('[MultiplayerPage] Round state changed:', roundData);
-          // The useMultiplayerGame hook will handle state updates automatically
-        }
-      });
+    if (roundIdBigInt) {
+      // Temporarily disable subscriptions as they're causing issues
+      // subscribeToGameplay(roundIdBigInt, {
+      //   onRoundStateChange: (roundData) => {
+      //     console.log('[MultiplayerPage] Round state changed:', roundData);
+      //     // The useMultiplayerGame hook will handle state updates automatically
+      //   }
+      // });
 
       return () => {
-        unsubscribeFromGameplay();
+        // unsubscribeFromGameplay();
       };
     }
-  }, [roundId, subscribeToGameplay, unsubscribeFromGameplay]);
+  }, [roundIdBigInt]);
 
   // Auto-start game when round state changes to IN_PROGRESS
   useEffect(() => {
+    console.log('[MultiplayerPage] Checking auto-start conditions:', {
+      roundState: round?.state,
+      gamePhase,
+      shouldStart: round?.state === 1 && gamePhase === 'starting'
+    });
+    
     if (round?.state === 1 && gamePhase === 'starting') {
       console.log('[MultiplayerPage] Round started, getting first card...');
       getNextCard();
     }
   }, [round?.state, gamePhase, getNextCard]);
+
+  // Manual trigger for development - if we're stuck in starting phase
+  useEffect(() => {
+    if (gamePhase === 'starting' && round?.state === 1) {
+      const timer = setTimeout(() => {
+        console.log('[MultiplayerPage] Manual trigger: Getting first card...');
+        getNextCard();
+      }, 2000); // Wait 2 seconds then manually trigger
+
+      return () => clearTimeout(timer);
+    }
+  }, [gamePhase, round?.state, getNextCard]);
 
   // Handle back button
   const handleBack = () => {
@@ -119,7 +144,7 @@ export default function MultiplayerPage() {
   };
 
   // Handle loading state
-  if (!roundId) {
+  if (!roundIdBigInt) {
     return (
       <div className="container mx-auto px-4 py-6 flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -141,7 +166,7 @@ export default function MultiplayerPage() {
         <div className="text-center">
           <LoadingSpinner />
           <h2 className="text-xl font-bold mb-4 mt-4">Loading game...</h2>
-          <p className="text-sm text-gray-500 mt-2">Connecting to round {roundId.toString()}</p>
+          <p className="text-sm text-gray-500 mt-2">Connecting to round {roundIdBigInt.toString()}</p>
         </div>
       </div>
     );
@@ -164,7 +189,9 @@ export default function MultiplayerPage() {
     );
   }
 
-  if (gamePhase === 'waiting' || round?.state === 0) {
+  // Don't show waiting component if we're on the multiplayer page with a roundId
+  // The user should only reach this page after the round has started
+  if (gamePhase === 'waiting' && !roundIdBigInt) {
     return <WaitingForOpponent onStart={() => {
       console.log('[MultiplayerPage] Game started from waiting screen');
       // The useMultiplayerGame hook will handle the transition automatically
@@ -209,10 +236,21 @@ export default function MultiplayerPage() {
         </button>
         <h1 className="text-2xl font-bold">Multiplayer Game</h1>
         <p className="text-gray-600 text-sm">
-          Round ID: {roundId.toString()} | Players: {playersCount} | Score: {myScore}
+          Round ID: {roundIdBigInt.toString()} | Players: {playersCount} | Score: {myScore}
         </p>
         {!isSubscribed && (
           <p className="text-yellow-600 text-sm">⚠️ Not connected to real-time updates</p>
+        )}
+        {(gamePhase === 'starting' || gamePhase === 'waiting') && (
+          <button
+            onClick={() => {
+              console.log('[MultiplayerPage] Manual start button clicked');
+              getNextCard();
+            }}
+            className="mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Start Game / Get First Card
+          </button>
         )}
       </div>
 

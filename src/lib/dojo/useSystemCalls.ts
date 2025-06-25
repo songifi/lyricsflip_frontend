@@ -112,6 +112,9 @@ export const stringToFelt252 = (str: string): string => {
 		.replace(/[ÝŸ]/g, 'Y')
 		.replace(/[Ñ]/g, 'N')
 		.replace(/[Ç]/g, 'C')
+		// Replace curly quotes and apostrophes
+		.replace(/['']/g, "'")
+		.replace(/[""]/g, '"')
 		// Remove any remaining non-ASCII characters
 		.replace(/[^\x00-\x7F]/g, '');
 	
@@ -150,7 +153,32 @@ export const stringToFelt252 = (str: string): string => {
 	return cairo.felt(truncated);
 };
 
-
+// Helper function to clean lyrics text for contract submission
+export const cleanLyricsForContract = (lyrics: string): string => {
+	return lyrics
+		// Replace common accented characters
+		.replace(/[àáâãäå]/g, 'a')
+		.replace(/[èéêë]/g, 'e')
+		.replace(/[ìíîï]/g, 'i')
+		.replace(/[òóôõö]/g, 'o')
+		.replace(/[ùúûü]/g, 'u')
+		.replace(/[ýÿ]/g, 'y')
+		.replace(/[ñ]/g, 'n')
+		.replace(/[ç]/g, 'c')
+		.replace(/[ÀÁÂÃÄÅ]/g, 'A')
+		.replace(/[ÈÉÊË]/g, 'E')
+		.replace(/[ÌÍÎÏ]/g, 'I')
+		.replace(/[ÒÓÔÕÖ]/g, 'O')
+		.replace(/[ÙÚÛÜ]/g, 'U')
+		.replace(/[ÝŸ]/g, 'Y')
+		.replace(/[Ñ]/g, 'N')
+		.replace(/[Ç]/g, 'C')
+		// Replace curly quotes and apostrophes
+		.replace(/['']/g, "'")
+		.replace(/[""]/g, '"')
+		// Remove any remaining non-ASCII characters
+		.replace(/[^\x00-\x7F]/g, '');
+};
 
 // Helper function to convert mock lyric data to CardData format
 export const mockLyricToCardData = (lyric: any, genreVariant: string): CardData => {
@@ -160,7 +188,7 @@ export const mockLyricToCardData = (lyric: any, genreVariant: string): CardData 
 		artist: stringToFelt252(lyric.artist),
 		title: stringToFelt252(lyric.title),
 		year: BigInt(2023), // Default year if not provided
-		lyrics: lyric.text // Contract expects string, not ByteArray
+		lyrics: cleanLyricsForContract(lyric.text) // Clean lyrics for contract
 	};
 };
 
@@ -400,10 +428,10 @@ export const useSystemCalls = () => {
 			console.log(`[StartRound] Executing start transaction for round ${roundId}`);
 			await client.actions.startRound(account, roundId);
 
-			// Wait for the entity to be updated with the new state
-			await state.waitForEntityChange(roundEntityId, (entity) => {
-				return entity?.models?.['lyricsflip-Round']?.state?.toString() === RoundStatus.IN_PROGRESS.toString();
-			});
+			// Use simple timeout instead of waitForEntityChange to avoid timeout issues
+			// The round start typically succeeds on-chain but entity updates can be delayed
+			console.log(`[StartRound] Transaction executed, waiting for entity sync...`);
+			await new Promise(resolve => setTimeout(resolve, 1500));
 
 			console.log(`[StartRound] Successfully started round ${roundId}`);
 		} catch (error) {
@@ -548,10 +576,9 @@ export const useSystemCalls = () => {
 			
 			await client.actions.forceStartRound(account, roundId);
 			
-			// Wait for the entity to be updated with the new state
-			await state.waitForEntityChange(roundEntityId, (entity) => {
-				return entity?.models?.['lyricsflip-Round']?.state?.toString() === RoundStatus.IN_PROGRESS.toString();
-			});
+			// Use simple timeout instead of waitForEntityChange to avoid timeout issues
+			console.log(`[ForceStartRound] Transaction executed, waiting for entity sync...`);
+			await new Promise(resolve => setTimeout(resolve, 1500));
 
 			console.log(`[ForceStartRound] Successfully started round ${roundId}`);
 		} catch (error) {

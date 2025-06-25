@@ -5,6 +5,7 @@ import { ClientProvider } from '@/components/providers/client-provider';
 import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
 import { Toaster } from 'sonner';
+import { useEffect, useState } from 'react';
 import './globals.css';
 
 const geistSans = Geist({
@@ -27,22 +28,31 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${interV.variable} antialiased`}
+        suppressHydrationWarning
       >
-        <ClientProvider>
-          <Navbar />
-          {children}
-          <MobileNav />
-          <Toaster 
-            position="top-center"
-            expand={false}
-            richColors
-            closeButton
-          />
-        </ClientProvider>
+        {isClient && (
+          <ClientProvider>
+            <Navbar />
+            {children}
+            <MobileNav />
+            <Toaster 
+              position="top-center"
+              expand={false}
+              richColors
+              closeButton
+            />
+          </ClientProvider>
+        )}
       </body>
     </html>
   );

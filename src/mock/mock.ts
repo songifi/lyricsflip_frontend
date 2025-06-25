@@ -56,7 +56,7 @@ export interface LyricData {
       ],
     },
     {
-      text: "You don’t need no other body",
+      text: "You don't need no other body",
       title: "Essence",
       artist: "Wizkid ft. Tems",
       options: [
@@ -188,7 +188,7 @@ export interface LyricData {
       ],
     },
     {
-      text: "I’m off the deep end, watch as I dive in, I’ll never meet the ground",
+      text: "I'm off the deep end, watch as I dive in, I'll never meet the ground",
       title: "Shallow",
       artist: "Lady Gaga & Bradley Cooper",
       options: [
@@ -199,7 +199,7 @@ export interface LyricData {
       ],
     },
     {
-      text: "You watch me bleed until I can’t breathe, shaking, falling onto my knees",
+      text: "You watch me bleed until I can't breathe, shaking, falling onto my knees",
       title: "Stitches",
       artist: "Shawn Mendes",
       options: [
@@ -221,7 +221,7 @@ export interface LyricData {
       ],
     },
     {
-      text: "I’m beginning to feel like a Rap God, Rap God",
+      text: "I'm beginning to feel like a Rap God, Rap God",
       title: "Rap God",
       artist: "Eminem",
       options: [
@@ -232,7 +232,7 @@ export interface LyricData {
       ],
     },
     {
-      text: "You’re way too beautiful girl, that’s why it’ll never work",
+      text: "You're way too beautiful girl, that's why it'll never work",
       title: "Beautiful Girls",
       artist: "Sean Kingston",
       options: [
@@ -245,12 +245,12 @@ export interface LyricData {
     {
       text: "To the left, to the left, everything you own in the box to the left",
       title: "Irreplaceable",
-      artist: "Beyoncé",
+      artist: "Beyonce",
       options: [
-        { title: "Irreplaceable", artist: "Beyoncé" },
-        { title: "Halo", artist: "Beyoncé" },
-        { title: "Single Ladies", artist: "Beyoncé" },
-        { title: "Crazy in Love", artist: "Beyoncé ft. Jay-Z" },
+        { title: "Irreplaceable", artist: "Beyonce" },
+        { title: "Halo", artist: "Beyonce" },
+        { title: "Single Ladies", artist: "Beyonce" },
+        { title: "Crazy in Love", artist: "Beyonce ft. Jay-Z" },
       ],
     },
     {
@@ -283,7 +283,7 @@ export interface LyricData {
         { title: "I Want It That Way", artist: "Backstreet Boys" },
         { title: "Bye Bye Bye", artist: "*NSYNC" },
         { title: "Everybody (Backstreet's Back)", artist: "Backstreet Boys" },
-        { title: "Tearin’ Up My Heart", artist: "*NSYNC" },
+        { title: "Tearin' Up My Heart", artist: "*NSYNC" },
       ],
     },
     {
@@ -309,7 +309,7 @@ export interface LyricData {
       ],
     },
     {
-      text: "I’m too hot (hot damn), call the police and the fireman",
+      text: "I'm too hot (hot damn), call the police and the fireman",
       title: "Uptown Funk",
       artist: "Mark Ronson ft. Bruno Mars",
       options: [
