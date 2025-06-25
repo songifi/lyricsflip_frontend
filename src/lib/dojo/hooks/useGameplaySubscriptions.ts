@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDojoSDK } from '@dojoengine/sdk/react';
 import { ToriiQueryBuilder, MemberClause } from '@dojoengine/sdk';
 import { ModelsMapping } from '../typescript/models.gen';
@@ -17,7 +17,7 @@ interface UseGameplaySubscriptionsResult {
 
 export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
   const { sdk } = useDojoSDK();
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const subscriptionsRef = useRef<any[]>([]); // Use ref instead of state to prevent re-renders
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
@@ -33,14 +33,14 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
       
       const subs = [];
 
-      // Subscribe to Round state changes - this is the most critical subscription
+      // Subscribe to Round state changes - use subscribeEntityQuery with hashed keys
       const roundQuery = new ToriiQueryBuilder()
         .withClause(
           MemberClause(ModelsMapping.Round, "round_id", "Eq", roundId).build()
         )
         .includeHashedKeys();
 
-      const [_, roundSubscription] = await sdk.subscribeEventQuery({
+      const [_, roundSubscription] = await sdk.subscribeEntityQuery({
         query: roundQuery,
         callback: ({ data, error }: { data?: any; error?: any }) => {
           if (error) {
@@ -76,7 +76,7 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
       // when the SDK API is more stable. For now, the Round subscription
       // will handle the most critical state changes.
 
-      setSubscriptions(subs);
+      subscriptionsRef.current = subs;
       setIsSubscribed(true);
       console.log('[useGameplaySubscriptions] Subscriptions set up successfully for round:', roundId.toString());
 
@@ -90,7 +90,7 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
   const unsubscribeFromGameplay = useCallback(() => {
     console.log('[useGameplaySubscriptions] Unsubscribing from all gameplay events...');
     
-    subscriptions.forEach((sub, index) => {
+    subscriptionsRef.current.forEach((sub: any, index: number) => {
       try {
         if (sub && typeof sub.cancel === 'function') {
           sub.cancel();
@@ -101,18 +101,28 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
       }
     });
     
-    setSubscriptions([]);
+    subscriptionsRef.current = [];
     setIsSubscribed(false);
     setSubscriptionError(null);
     console.log('[useGameplaySubscriptions] All subscriptions cancelled');
-  }, [subscriptions]);
+  }, []); // Empty dependency array to prevent re-creation
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      unsubscribeFromGameplay();
+      // Call cleanup directly to avoid dependency on unsubscribeFromGameplay
+      subscriptionsRef.current.forEach((sub: any) => {
+        try {
+          if (sub && typeof sub.cancel === 'function') {
+            sub.cancel();
+          }
+        } catch (error) {
+          console.error('[useGameplaySubscriptions] Error cancelling subscription on unmount:', error);
+        }
+      });
+      subscriptionsRef.current = [];
     };
-  }, [unsubscribeFromGameplay]);
+  }, []); // Empty dependency array - cleanup only on unmount
 
   return {
     subscribeToGameplay,

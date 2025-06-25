@@ -1,67 +1,76 @@
+'use client';
+
 import { Copy, Lightbulb, X } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React from 'react';
 import { useModalStore } from '@/store/modal-store';
 import { useAccount } from "@starknet-react/core";
 import { ErrorBoundary } from '../atoms/error-boundary';
 import LoadingSpinner from '../atoms/loading-spinner';
-import { useRoundQuery } from '@/lib/dojo/hooks/useRoundQuery';
-import { useStartRound } from '@/lib/dojo/hooks/useStartRound';
+import { useRoundActivation } from '@/lib/dojo/hooks/useRoundActivation';
+import { RoundStatus } from '@/lib/dojo/types';
 
 interface WaitingForOpponentProps {
   onStart?: () => void;
 }
 
-function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
-  const { modalPayload } = useModalStore();
+const WaitingForOpponentContent = React.memo(function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
+  const { modalPayload, closeModal } = useModalStore();
   const { account } = useAccount();
-  const { startRound, isLoading: isStarting, error: startError } = useStartRound();
   
   const roundId = modalPayload?.roundId;
+  const roundIdBigInt = roundId ? BigInt(roundId) : null;
   
-  const { round, playersCount, isLoading: isRoundLoading, error: roundError, queryRound } = useRoundQuery();
+  const { round, playersCount, isLoading, error, ensureActive, goToGame, isActive } = useRoundActivation({ roundId: roundIdBigInt });
   
-  // Debug the round object structure
-  console.log('[WaitingForOpponent] ===== ROUND DATA TRACE =====');
-  console.log('[WaitingForOpponent] 1. Round object:', round);
-  console.log('[WaitingForOpponent] 2. Round type:', typeof round);
-  console.log('[WaitingForOpponent] 3. Round keys:', round ? Object.keys(round) : 'null');
-  console.log('[WaitingForOpponent] 4. Round loading state:', isRoundLoading);
-  console.log('[WaitingForOpponent] 5. Round error state:', roundError);
-  console.log('[WaitingForOpponent] 6. PlayersCount:', playersCount);
-  console.log('[WaitingForOpponent] ===== END ROUND DATA TRACE =====');
+  // Add ref to prevent multiple auto-start attempts
+  const hasAutoStarted = useRef(false);
   
-  const creatorAddress = round?.creator;
+  // Memoize derived values to prevent unnecessary re-renders
+  const roundInfo = useMemo(() => {
+    const stateNumber = round?.state ? Number(round.state) : null;
+    const isInProgress = stateNumber === RoundStatus.IN_PROGRESS;
+    
+    return {
+      hasRound: !!round,
+      roundState: round?.state,
+      roundStateNumber: stateNumber,
+      creatorAddress: round?.creator,
+      isInProgress
+    };
+  }, [round]);
+
+  // Add state monitoring for automatic redirection
+  const [hasRedirected, setHasRedirected] = useState(false);
+
+  // Removed excessive debug logging to prevent performance issues
   
   const [isCopied, setIsCopied] = useState(false);
   const totalPlayers = 2;
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  
+  // 🚀 KEY ADDITION: Monitor round state for automatic redirection
   useEffect(() => {
-    console.log('[WaitingForOpponent] ===== COMPONENT MOUNT TRACE =====');
-    console.log('[WaitingForOpponent] 1. Component effect triggered');
-    console.log('[WaitingForOpponent] 2. RoundId from modalPayload:', roundId);
-    console.log('[WaitingForOpponent] 3. RoundId type:', typeof roundId);
-    console.log('[WaitingForOpponent] 4. QueryRound function available:', !!queryRound);
-    
-    if (roundId) {
-      console.log('[WaitingForOpponent] 5. Calling queryRound with BigInt(' + roundId + ')');
-      queryRound(BigInt(roundId));
-    } else {
-      console.log('[WaitingForOpponent] 5. NO roundId - skipping query');
+    if (isActive && !hasRedirected && roundId) {
+      console.log('[WaitingForOpponent] 🚀 ROUND STARTED! Redirecting to multiplayer game...');
+      
+      setHasRedirected(true); // Prevent multiple redirections
+      closeModal(); // Close the waiting modal
+      goToGame(BigInt(roundId)); // Use the goToGame helper
     }
-    console.log('[WaitingForOpponent] ===== END COMPONENT MOUNT TRACE =====');
-  }, [roundId, queryRound]);
+  }, [isActive, roundId, hasRedirected, closeModal, goToGame]);
 
+  // Separate useEffect for component mounting/unmounting
   useEffect(() => {
     console.log('WaitingForOpponent mounted');
     console.log('roundId from modalPayload:', roundId);
-    console.log('creatorAddress (from round):', creatorAddress);
+    console.log('creatorAddress (from round):', roundInfo.creatorAddress);
     console.log('current account:', account?.address);
 
     if (!roundId) {
-      setError('No round ID provided');
+      setLocalError('No round ID provided');
     }
 
     return () => {
@@ -73,7 +82,40 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
         copyTimeoutRef.current = null;
       }
     };
-  }, [roundId, creatorAddress, account?.address]);
+  }, [roundId, roundInfo.creatorAddress, account?.address]);
+
+  // Separate useEffect for auto-start logic to prevent infinite re-renders
+  useEffect(() => {
+    const minPlayersRequired = 2;
+    
+    if (
+      roundId && 
+      account?.address === roundInfo.creatorAddress && 
+      playersCount >= minPlayersRequired &&
+      !isActive &&
+      !isLoading &&
+      !hasAutoStarted.current
+    ) {
+      console.log('[WaitingForOpponent] Auto-starting round as creator with sufficient players');
+      hasAutoStarted.current = true;
+      
+      // Call ensureActive directly to avoid handleGameStart dependency
+      ensureActive(BigInt(roundId))
+        .then((result) => {
+          console.log('[WaitingForOpponent] Auto-start result:', result);
+          if (onStart) {
+            onStart();
+          }
+        })
+        .catch((err) => {
+          console.error('[WaitingForOpponent] Auto-start failed:', err);
+          hasAutoStarted.current = false; // Reset so user can manually try
+          if (mountedRef.current) {
+            setLocalError(err instanceof Error ? err.message : 'Failed to auto-start game');
+          }
+        });
+    }
+  }, [roundId, account?.address, roundInfo.creatorAddress, playersCount, isActive, isLoading]); // Remove ensureActive and onStart to prevent re-renders
 
   const handleCopyCode = useCallback(() => {
     if (!mountedRef.current || !roundId) return;
@@ -99,7 +141,7 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
         });
     } catch (err) {
       if (mountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to copy invite code');
+        setLocalError(err instanceof Error ? err.message : 'Failed to copy invite code');
         console.error('Error copying code:', err);
       }
     }
@@ -108,10 +150,10 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
   const handleGameStart = useCallback(async () => {
     console.log('[WaitingRoom] Attempting to start game:', {
       roundId,
-      isStarting,
+      isLoading,
       mounted: mountedRef.current,
       account: account?.address,
-      creatorAddress
+      creatorAddress: roundInfo.creatorAddress
     });
 
     if (!roundId) {
@@ -121,8 +163,14 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
 
     try {
       console.log('[WaitingRoom] Starting round:', roundId);
-      await startRound(BigInt(roundId));
-      console.log('[WaitingRoom] Round started successfully');
+      const result = await ensureActive(BigInt(roundId));
+      console.log('[WaitingRoom] Round activation result:', result);
+      
+      // Force immediate navigation after successful start
+      console.log('[WaitingRoom] 🚀 FORCING IMMEDIATE NAVIGATION...');
+      setHasRedirected(true);
+      closeModal();
+      goToGame(BigInt(roundId));
       
       if (onStart) {
         onStart();
@@ -130,10 +178,10 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
     } catch (err) {
       console.error('[WaitingRoom] Failed to start round:', err);
       if (mountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to start game');
+        setLocalError(err instanceof Error ? err.message : 'Failed to start game');
       }
     }
-  }, [roundId, startRound, onStart, account?.address, creatorAddress]);
+  }, [roundId, ensureActive, onStart, account?.address, roundInfo.creatorAddress]);
 
   const [timeLeft, setTimeLeft] = useState(120);
   useEffect(() => {
@@ -141,7 +189,7 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
 
     if (timeLeft <= 0) {
       if (mountedRef.current) {
-        setError('Time expired waiting for opponent');
+        setLocalError('Time expired waiting for opponent');
       }
       return;
     }
@@ -163,17 +211,17 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  if (error || startError || roundError) {
+  if (error || localError) {
     return (
       <div className="p-4 rounded-lg bg-red-50 border border-red-200">
         <h2 className="text-lg font-semibold text-red-800 mb-2">
           Error
         </h2>
         <p className="text-sm text-red-600 mb-4">
-          {error || startError || roundError}
+          {error || localError}
         </p>
         <button
-          onClick={() => setError(null)}
+          onClick={() => setLocalError(null)}
           className="px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
         >
           Try again
@@ -249,7 +297,7 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
       
       <div className="w-full flex flex-col justify-center items-center gap-[8px] mt-20">
         <div className="flex flex-col gap-[8px] justify-center w-full items-center">
-          {isStarting ? (
+          {isLoading ? (
             <>
               <LoadingSpinner size="md" />
               <span className="text-[20px] font-[500] text-[#000000]">
@@ -266,13 +314,13 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
               <span className="text-[16px] font-[400] text-[#666666]">
                 {playersCount} joined, {totalPlayers - playersCount} left
               </span>
-              {(!isStarting && (playersCount === totalPlayers || account?.address === creatorAddress)) && (
+              {(!isLoading && (playersCount === totalPlayers || account?.address === roundInfo.creatorAddress)) && (
                 <button
                   className="mt-4 text-[16px] font-[500] w-full max-w-[200px] hover:bg-transparent hover:border border-[#9747FF] hover:text-[#9747FF] transition-colors duration-200 rounded-full bg-[#9747FF] text-white py-[12px]"
                   onClick={handleGameStart}
-                  disabled={isStarting}
+                  disabled={isLoading}
                 >
-                  {account?.address === creatorAddress ? 'Start Round' : 'Start Game'}
+                  {account?.address === roundInfo.creatorAddress ? 'Start Round' : 'Start Game'}
                 </button>
               )}
             </>
@@ -291,9 +339,9 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
       </div>
     </>
   );
-}
+});
 
-export default function WaitingForOpponent(props: WaitingForOpponentProps) {
+export default React.memo(function WaitingForOpponent(props: WaitingForOpponentProps) {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
@@ -303,4 +351,4 @@ export default function WaitingForOpponent(props: WaitingForOpponentProps) {
       <WaitingForOpponentContent {...props} />
     </ErrorBoundary>
   );
-}
+});
