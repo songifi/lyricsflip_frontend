@@ -54,7 +54,7 @@ export const useRoundEvents = (): UseRoundEventsReturn => {
   const retryDelay = 1000; // 1 second
 
   // Subscribe to both Round and RoundPlayer models
-  const roundModels = useModels(ModelsMapping.Rounds);
+  const roundModels = useModels(ModelsMapping.Round);
   const playerModels = useModels(ModelsMapping.RoundPlayer);
 
   const processLatestEvent = useCallback(() => {

@@ -1,12 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useSystemCalls } from '../useSystemCalls';
-import { useDojoSDK, useModels } from '@dojoengine/sdk/react';
+import { useDojoSDK } from '@dojoengine/sdk/react';
 import { useAccount } from '@starknet-react/core';
-import { getEntityIdFromKeys } from "@dojoengine/utils";
-import { RoundEventType } from '../events/types';
-import { useRoundEventBus } from '../events/eventBus';
-import { ModelsMapping } from '../typescript/models.gen';
-import { validateRound } from '../utils/roundValidation';
 
 interface StartRoundState {
   isLoading: boolean;
@@ -31,10 +26,6 @@ export const useStartRound = (): UseStartRoundReturn => {
 
   const { startRound: startRoundCall } = useSystemCalls();
   const { account } = useAccount();
-  const { subscribe } = useRoundEventBus();
-  
-  // Subscribe to network models
-  const roundModels = useModels(ModelsMapping.Rounds);
 
   const reset = useCallback(() => {
     console.log('[useStartRound] Resetting state');
@@ -58,29 +49,18 @@ export const useStartRound = (): UseStartRoundReturn => {
     }));
 
     try {
-      // Execute the start transaction
+      // Execute the start transaction - the useSystemCalls hook now handles
+      // all optimistic updates and state waiting automatically
       console.log('[useStartRound] Executing start transaction for round:', roundId.toString());
       await startRoundCall(roundId);
       
-      // Since the contract call succeeded, we can proceed
-      console.log('[useStartRound] Contract call successful, proceeding with UI update');
+      console.log('[useStartRound] Start successful - SDK handled state updates automatically');
       
       setState(prev => ({
         ...prev,
         isLoading: false,
         isSuccess: true,
       }));
-
-      // Emit a local event to update UI
-      subscribe({
-        type: RoundEventType.ROUND,
-        handler: (event) => {
-          if (event.type === RoundEventType.ROUND && 
-              event.roundId === roundId.toString()) {
-            console.log('[useStartRound] Received round update:', event);
-          }
-        },
-      });
 
     } catch (error) {
       console.error('[useStartRound] Error during start process:', error);
@@ -92,7 +72,7 @@ export const useStartRound = (): UseStartRoundReturn => {
       }));
       throw error;
     }
-  }, [account?.address, subscribe, startRoundCall]);
+  }, [account?.address, startRoundCall]);
 
   return {
     ...state,

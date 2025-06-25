@@ -1,12 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useSystemCalls } from '../useSystemCalls';
-import { useDojoSDK, useModels } from '@dojoengine/sdk/react';
+import { useDojoSDK } from '@dojoengine/sdk/react';
 import { validateRoundId, RoundValidationResult } from '../utils/roundValidation';
 import { useAccount } from '@starknet-react/core';
 import { getEntityIdFromKeys } from "@dojoengine/utils";
-import { RoundEventType, PlayerEvent, RoundJoinedEvent, RoundEvent } from '../events/types';
-import { useRoundEventBus } from '../events/eventBus';
-import { ModelsMapping } from '../typescript/models.gen';
 
 interface JoinRoundState {
   isLoading: boolean;
@@ -31,11 +28,8 @@ export const useJoinRound = (): UseJoinRoundReturn => {
 
   const { joinRound: joinRoundCall } = useSystemCalls();
   const { account } = useAccount();
-  const { subscribe } = useRoundEventBus();
-  
-  // Subscribe to network models
-  const roundModels = useModels(ModelsMapping.Rounds);
-  const playerModels = useModels(ModelsMapping.RoundPlayer);
+  const { useDojoStore } = useDojoSDK();
+  const dojoState = useDojoStore((state) => state);
 
   const reset = useCallback(() => {
     console.log('[useJoinRound] Resetting state');
@@ -71,45 +65,13 @@ export const useJoinRound = (): UseJoinRoundReturn => {
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-    // Subscribe to events
-    const eventConfirmation = new Promise<void>((resolve, reject) => {
-      const unsubscribe = subscribe({
-        type: RoundEventType.ROUND_JOINED,
-        handler: (event: RoundEvent | PlayerEvent | RoundJoinedEvent) => {
-          console.log('[useJoinRound] Received ROUND_JOINED event:', event);
-          
-          if (event.type !== RoundEventType.ROUND_JOINED) return;
-          const joinedEvent = event as RoundJoinedEvent;
-          
-          // Check if this is the event we're waiting for
-          console.log('[useJoinRound] Checking ROUND_JOINED event:', {
-            eventRoundId: joinedEvent.data.round_id.toString(),
-            eventPlayer: joinedEvent.data.player,
-            expectedRoundId: roundId.toString(),
-            accountAddress: account.address
-          });
-          
-          if (joinedEvent.data.round_id.toString() === roundId.toString() && 
-              joinedEvent.data.player === account.address) {
-            console.log('[useJoinRound] Matching ROUND_JOINED event found');
-            unsubscribe();
-            resolve();
-          }
-        }
-      });
-    });
-
     try {
-      // 1. Execute the join transaction
+      // Execute the join transaction - the useSystemCalls hook now handles
+      // all optimistic updates and state waiting automatically
       console.log('[useJoinRound] Executing join transaction');
-      await joinRoundCall(roundId);
+      await joinRoundCall(roundId.toString());
       
-      // 2. Wait for event confirmation
-      console.log('[useJoinRound] Waiting for event confirmation');
-      await eventConfirmation;
-      
-      // 3. No manual verification loop - rely on subscription
-      console.log('[useJoinRound] Event confirmed, join successful');
+      console.log('[useJoinRound] Join successful - SDK handled state updates automatically');
       
       setState(prev => ({
         ...prev,
@@ -128,7 +90,7 @@ export const useJoinRound = (): UseJoinRoundReturn => {
       }));
       throw error;
     }
-  }, [account?.address, state.validation, subscribe, roundModels, playerModels, joinRoundCall]);
+  }, [account?.address, joinRoundCall]);
 
   return {
     ...state,

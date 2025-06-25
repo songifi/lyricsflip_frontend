@@ -1,7 +1,7 @@
 {
   "world": {
-    "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
-    "address": "0x2be138dcce30cbd1df3fb709d47eb468cda866f0ac122d821cd8f7efc88bf2c",
+    "class_hash": "0x75fc75bcd1a7f8b4bf64b74978b0f89c8cee44bb755c1dae6f82284756451ec",
+    "address": "0x67a1b62464569a3800152405d4862a487c345ae31bcd5eef688e74a891e4a89",
     "seed": "lyricsflip",
     "name": "Dojo starter",
     "entrypoints": [
@@ -693,22 +693,6 @@
           },
           {
             "type": "function",
-            "name": "owners_count",
-            "inputs": [
-              {
-                "name": "resource",
-                "type": "core::felt252"
-              }
-            ],
-            "outputs": [
-              {
-                "type": "core::integer::u64"
-              }
-            ],
-            "state_mutability": "view"
-          },
-          {
-            "type": "function",
             "name": "is_writer",
             "inputs": [
               {
@@ -1328,8 +1312,8 @@
   },
   "contracts": [
     {
-      "address": "0x2e2ee603fb1b67c7bd328cb0a26697a413ee5b2abaffe8b8512eef5d4eac25d",
-      "class_hash": "0x3f7c03176f001b829fe1bf8b07544980e2ee177b15bc568efe2b632f657ed33",
+      "address": "0x723a9becddfc95ab77d0ff7db6db9d850ee6ddecf7908547e1ecc353a66ea03",
+      "class_hash": "0x4a1a2bca4e3ec6ffd4fcb0e3d1cfcd4d195f894c9b927920c8ef1c307a890a5",
       "abi": [
         {
           "type": "impl",
@@ -1388,7 +1372,87 @@
         },
         {
           "type": "enum",
-          "name": "lyricsflip::genre::Genre",
+          "name": "lyricsflip::models::round::Mode",
+          "variants": [
+            {
+              "name": "Solo",
+              "type": "()"
+            },
+            {
+              "name": "MultiPlayer",
+              "type": "()"
+            },
+            {
+              "name": "WagerMultiPlayer",
+              "type": "()"
+            },
+            {
+              "name": "Challenge",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "lyricsflip::models::round::ChallengeType",
+          "variants": [
+            {
+              "name": "Random",
+              "type": "()"
+            },
+            {
+              "name": "Year",
+              "type": "()"
+            },
+            {
+              "name": "Artist",
+              "type": "()"
+            },
+            {
+              "name": "Genre",
+              "type": "()"
+            },
+            {
+              "name": "Decade",
+              "type": "()"
+            },
+            {
+              "name": "GenreAndDecade",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<lyricsflip::models::round::ChallengeType>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "lyricsflip::models::round::ChallengeType"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<core::felt252>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "core::felt252"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "lyricsflip::models::genre::Genre",
           "variants": [
             {
               "name": "HipHop",
@@ -1446,15 +1510,37 @@
         },
         {
           "type": "struct",
-          "name": "core::integer::u256",
+          "name": "lyricsflip::models::card::CardData",
           "members": [
             {
-              "name": "low",
-              "type": "core::integer::u128"
+              "name": "genre",
+              "type": "lyricsflip::models::genre::Genre"
             },
             {
-              "name": "high",
-              "type": "core::integer::u128"
+              "name": "artist",
+              "type": "core::felt252"
+            },
+            {
+              "name": "title",
+              "type": "core::felt252"
+            },
+            {
+              "name": "year",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "lyrics",
+              "type": "core::byte_array::ByteArray"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<lyricsflip::models::card::CardData>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<lyricsflip::models::card::CardData>"
             }
           ]
         },
@@ -1473,6 +1559,54 @@
           ]
         },
         {
+          "type": "struct",
+          "name": "lyricsflip::models::card::QuestionCard",
+          "members": [
+            {
+              "name": "lyric",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "option_one",
+              "type": "(core::felt252, core::felt252)"
+            },
+            {
+              "name": "option_two",
+              "type": "(core::felt252, core::felt252)"
+            },
+            {
+              "name": "option_three",
+              "type": "(core::felt252, core::felt252)"
+            },
+            {
+              "name": "option_four",
+              "type": "(core::felt252, core::felt252)"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "lyricsflip::models::round::Answer",
+          "variants": [
+            {
+              "name": "OptionOne",
+              "type": "()"
+            },
+            {
+              "name": "OptionTwo",
+              "type": "()"
+            },
+            {
+              "name": "OptionThree",
+              "type": "()"
+            },
+            {
+              "name": "OptionFour",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "interface",
           "name": "lyricsflip::systems::actions::IActions",
           "items": [
@@ -1481,13 +1615,25 @@
               "name": "create_round",
               "inputs": [
                 {
-                  "name": "genre",
-                  "type": "lyricsflip::genre::Genre"
+                  "name": "mode",
+                  "type": "lyricsflip::models::round::Mode"
+                },
+                {
+                  "name": "challenge_type",
+                  "type": "core::option::Option::<lyricsflip::models::round::ChallengeType>"
+                },
+                {
+                  "name": "challenge_param1",
+                  "type": "core::option::Option::<core::felt252>"
+                },
+                {
+                  "name": "challenge_param2",
+                  "type": "core::option::Option::<core::felt252>"
                 }
               ],
               "outputs": [
                 {
-                  "type": "core::integer::u256"
+                  "type": "core::integer::u64"
                 }
               ],
               "state_mutability": "external"
@@ -1498,7 +1644,7 @@
               "inputs": [
                 {
                   "name": "round_id",
-                  "type": "core::integer::u256"
+                  "type": "core::integer::u64"
                 }
               ],
               "outputs": [],
@@ -1506,22 +1652,11 @@
             },
             {
               "type": "function",
-              "name": "get_round_id",
-              "inputs": [],
-              "outputs": [
-                {
-                  "type": "core::integer::u256"
-                }
-              ],
-              "state_mutability": "view"
-            },
-            {
-              "type": "function",
               "name": "add_lyrics_card",
               "inputs": [
                 {
                   "name": "genre",
-                  "type": "lyricsflip::genre::Genre"
+                  "type": "lyricsflip::models::genre::Genre"
                 },
                 {
                   "name": "artist",
@@ -1540,11 +1675,19 @@
                   "type": "core::byte_array::ByteArray"
                 }
               ],
-              "outputs": [
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "add_batch_lyrics_card",
+              "inputs": [
                 {
-                  "type": "core::integer::u256"
+                  "name": "cards",
+                  "type": "core::array::Span::<lyricsflip::models::card::CardData>"
                 }
               ],
+              "outputs": [],
               "state_mutability": "external"
             },
             {
@@ -1553,7 +1696,7 @@
               "inputs": [
                 {
                   "name": "round_id",
-                  "type": "core::integer::u256"
+                  "type": "core::integer::u64"
                 },
                 {
                   "name": "player",
@@ -1573,7 +1716,55 @@
               "inputs": [
                 {
                   "name": "round_id",
-                  "type": "core::integer::u256"
+                  "type": "core::integer::u64"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "next_card",
+              "inputs": [
+                {
+                  "name": "round_id",
+                  "type": "core::integer::u64"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "lyricsflip::models::card::QuestionCard"
+                }
+              ],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "submit_answer",
+              "inputs": [
+                {
+                  "name": "round_id",
+                  "type": "core::integer::u64"
+                },
+                {
+                  "name": "answer",
+                  "type": "lyricsflip::models::round::Answer"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::bool"
+                }
+              ],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "force_start_round",
+              "inputs": [
+                {
+                  "name": "round_id",
+                  "type": "core::integer::u64"
                 }
               ],
               "outputs": [],
@@ -1703,13 +1894,17 @@
         "create_round",
         "join_round",
         "add_lyrics_card",
+        "add_batch_lyrics_card",
         "start_round",
+        "next_card",
+        "submit_answer",
+        "force_start_round",
         "upgrade"
       ]
     },
     {
-      "address": "0x73a2df0880de94a01f9aa734e42ad43b915f9539fd2c614a2b6ac32663396bc",
-      "class_hash": "0x53baf600a3546728f2a7c83d65e3e9853afd31475b0e1707be90063565ed103",
+      "address": "0x77d3299d04a7375cafd03f6864203a3e71be6adc19b6c1e3f692ac97fb9d4fe",
+      "class_hash": "0x4a2c6796344ecb9c2fad3a1a36266377df7d5a0e59bcb13ec2f041b2edee812",
       "abi": [
         {
           "type": "impl",
@@ -1775,8 +1970,8 @@
               "name": "set_game_config",
               "inputs": [
                 {
-                  "name": "admin_address",
-                  "type": "core::starknet::contract_address::ContractAddress"
+                  "name": "cards_per_round",
+                  "type": "core::integer::u32"
                 }
               ],
               "outputs": [],
@@ -1938,55 +2133,61 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x2b3305140b7d054a55a84dd664c3c7dfe79f3b1d4b7a3034460f2004be3fefe",
+      "class_hash": "0x4c1f4fb6f000305061d1d42a257e01dfd0cebb99b3b390b9fe2a24f1ff5cd09",
       "tag": "lyricsflip-ArtistCards",
       "selector": "0x6b5d3ad372cbebb658c568b9bbc74828318f62fba69871ac0a65c4d97fa8b7a"
     },
     {
       "members": [],
-      "class_hash": "0x6819f24e184a8ae842aee46aa01d29ee0f055fdd09942e2dd19b8669475b123",
+      "class_hash": "0x36bb8e9a1828ed33969c120beb02fb2b4b8624dc4f9ab57f00b102a8677e0f6",
       "tag": "lyricsflip-GameConfig",
       "selector": "0x11369a6835b1109edaca7868a6a0e2febcdba1545fa04e588bc9854734ba183"
     },
     {
       "members": [],
-      "class_hash": "0x4e00fbc3dcb5b31a1c8ab2992ba70e4e8fcced63c388178c05c3314ec65a75b",
+      "class_hash": "0xd5fa360edcc5255f9605b22a3be8b2d9c32897dd9be8ae8cdf98123f5be46c",
+      "tag": "lyricsflip-GenreCards",
+      "selector": "0x5fa5a2a2cbc8cb2c46ae9dbae9356ac9078ebbd765a19eb3e358dc33e957b95"
+    },
+    {
+      "members": [],
+      "class_hash": "0x75025b6e151782dff837f07b94e30ea2a85ce7ad270d594646e469325f1a185",
       "tag": "lyricsflip-LyricsCard",
       "selector": "0x5b51169a1d5cfe4f587cc1aa65ebd205ce562e5fe4e772235e5a756dfed084e"
     },
     {
       "members": [],
-      "class_hash": "0x5d112349aff9f2e3149343f01ec6a3180d9ce9dd0861b1e47b913b57fccce2",
+      "class_hash": "0x2c1d3a84ddf5f0e77f5a6a6fdbd35b6a292c2b69ef0bf255450c9f9d9dea207",
       "tag": "lyricsflip-LyricsCardCount",
       "selector": "0x1f325f87239aefd5bdc36d007ffb2eb6733ecec081b90b3396e9002572e036c"
     },
     {
       "members": [],
-      "class_hash": "0x219a1974d4bd638f2620a0a1567bd56004571331bdaff8a35b96f305a69f58a",
+      "class_hash": "0x4a9abe09158a764fe9140b81de504a58bba26f09da7dde865e39a4b9ee695b1",
       "tag": "lyricsflip-PlayerStats",
       "selector": "0xb22ed737f5c0b0bc0fc9223f73214cb30a09e812d0326dc8a419b27d77d3da"
     },
     {
       "members": [],
-      "class_hash": "0x255af86d26464880a61b28821560b20dd3655d945430e608191ca18822b920e",
+      "class_hash": "0x652680270c63a2acb8804dd89cd00ad28adf18d3e77649cb75cf7c53884ddb4",
+      "tag": "lyricsflip-Round",
+      "selector": "0x62901679c76da7ee222a1e0613acbfd5824a3e1126cfa23076577aef7b9482b"
+    },
+    {
+      "members": [],
+      "class_hash": "0x1079bfbe015d64fead9a2e93fd3dcf37b9a336a1f6642e09701d7426d4dd46e",
       "tag": "lyricsflip-RoundPlayer",
       "selector": "0x501c59a5d46af4daa736acc28ff1badefc8cc21060085e728a459e2687a43e1"
     },
     {
       "members": [],
-      "class_hash": "0x19d167a9030198c4ed96a1dea295ca96c368b369ae533bf578269f445e1ed52",
-      "tag": "lyricsflip-Rounds",
-      "selector": "0x561df6e07484485c3fc903253f1256ab31e756d799db414c6714b39982e8f63"
-    },
-    {
-      "members": [],
-      "class_hash": "0x7a13b5179939fad4801c1adf4a47f3289a342eb0248766ac0a8fe54171fd489",
+      "class_hash": "0xc450881b60e9c2e5e5acb8d9b0dea9e0abe9df92fc8e291e673b32ccb19a59",
       "tag": "lyricsflip-RoundsCount",
       "selector": "0x43136cc47379ea00ab3c7a1f3a0f3efd1f9db5996fe16468bc2e891e705bc0c"
     },
     {
       "members": [],
-      "class_hash": "0x710359f74a950699c04e063ea0db5cb0f8320303214984c83e4756bbaf636ef",
+      "class_hash": "0x50d681a1aafebd055047ccc69123a2d4051fd56f0e5c9489985d956c0834ab9",
       "tag": "lyricsflip-YearCards",
       "selector": "0x1376dd83ec0176a0b42462ef32014b92a4bc09b7f5f460b0460f57cd86b8b6a"
     }
@@ -1994,21 +2195,39 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0xe7e5b7915b5014d8f9b6485e312bdda2e72d138aa350509c6f6bb18ed42bee",
+      "class_hash": "0x932e4d4baaaa8d754b4dda60e070da739e76af5b6d927146702927bd787e44",
+      "tag": "lyricsflip-PlayerAnswer",
+      "selector": "0x5e8afd29eaf23db6d4841e53dbfb3aa74e672ee7f306543f4b33beb8bbe0bf3"
+    },
+    {
+      "members": [],
+      "class_hash": "0x17dd53450902e0cd54d6de3231f158d24c9541c5cdd993324cf381ca0effeb1",
       "tag": "lyricsflip-PlayerReady",
       "selector": "0x4944eb779f2e3c1b1014f33ef9fd5e3de4cd4d1911cd8d6ce474f601f0f735d"
     },
     {
       "members": [],
-      "class_hash": "0x5f04ff1a422ef88bf1b68e0fab07b1a67d5a086f41d54c5d41a6eca3862bf4a",
+      "class_hash": "0x483bc787f9a2bd6ae2d382b9fe85cf7d2969d00b2ef2cca531113ddca8bd29d",
       "tag": "lyricsflip-RoundCreated",
       "selector": "0x4ff145057f4be0045c3cb800962f0194718dd90954ab00b2360723129eb28ff"
     },
     {
       "members": [],
-      "class_hash": "0x75a3128dd3f11202a50aeb4422847605bba2688caad9f7aee041a9635c1571d",
+      "class_hash": "0x275ac2e183cd260e3b3395825732546b27100e9b7cd2794288b2ee4ebf7529b",
+      "tag": "lyricsflip-RoundForceStarted",
+      "selector": "0x196c49067ef92f8b16f8f0e38559462071e192fa5a0c2374bdb530a0e500061"
+    },
+    {
+      "members": [],
+      "class_hash": "0xcb3a8adfd44dc7ab3c599ea7d158bfb14141c9b432594c752bd371da1a6b55",
       "tag": "lyricsflip-RoundJoined",
       "selector": "0x62fcce558392aa90a0062097e17eee5e7d4293506c9a4232cd81c04bd113e7d"
+    },
+    {
+      "members": [],
+      "class_hash": "0x56aa7dcac4c386bec78f28e1789404490f3f78c9b6fafa698a73682ef2d68d6",
+      "tag": "lyricsflip-RoundWinner",
+      "selector": "0x4aa51ee8b70b1ee6ea92a9ae1ce45d5b83123422576cfdd53d4126bec6fdc01"
     }
   ],
   "external_contracts": []

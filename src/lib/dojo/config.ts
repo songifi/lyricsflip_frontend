@@ -34,7 +34,7 @@ export const getWalletConfig = (): WalletConfig => {
     isDevelopment,
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'http://localhost:5050',
     toriiUrl: process.env.NEXT_PUBLIC_TORII_URL || 'http://localhost:8080',
-    relayUrl: process.env.NEXT_PUBLIC_RELAY_URL || "  /ip4/127.0.0.1/tcp/9092/ws",
+    relayUrl: process.env.NEXT_PUBLIC_RELAY_URL || "/ip4/127.0.0.1/tcp/9092/ws",
     debug: process.env.NEXT_PUBLIC_DEBUG === 'true' || isDevelopment,
   };
 };

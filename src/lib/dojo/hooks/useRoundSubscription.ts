@@ -18,7 +18,7 @@ export const useRoundSubscription = (roundId: string) => {
         // Simple query for the round
         const roundQuery = new ToriiQueryBuilder()
           .withClause(
-            MemberClause(ModelsMapping.Rounds, "round_id", "Eq", roundIdBigInt).build()
+            MemberClause(ModelsMapping.Round, "round_id", "Eq", roundIdBigInt).build()
           )
           .includeHashedKeys();
 
