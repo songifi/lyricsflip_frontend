@@ -1,4 +1,4 @@
-import { Rounds } from '../typescript/models.gen';
+import { Round } from '../typescript/models.gen';
 import { BigNumberish } from 'starknet';
 
 export interface RoundValidationResult {
@@ -13,7 +13,7 @@ export interface RoundValidationOptions {
 }
 
 export const validateRound = (
-  round: Rounds | undefined,
+  round: Round | undefined,
   options: RoundValidationOptions = {}
 ): RoundValidationResult => {
   // Default options
@@ -32,7 +32,7 @@ export const validateRound = (
   }
 
   // Check round state
-  if (round.round.state !== BigInt(0)) {
+  if (round.state !== BigInt(0)) {
     return {
       isValid: false,
       error: 'Round is not in waiting state',
@@ -40,7 +40,7 @@ export const validateRound = (
   }
 
   // Check player count
-  const currentPlayers = BigInt(round.round.players_count.toString());
+  const currentPlayers = BigInt(round.players_count.toString());
   if (currentPlayers >= BigInt(maxPlayers)) {
     return {
       isValid: false,
@@ -49,7 +49,7 @@ export const validateRound = (
   }
 
   // Check wager amount
-  const wagerAmount = BigInt(round.round.wager_amount.toString());
+  const wagerAmount = BigInt(round.wager_amount.toString());
   if (wagerAmount < minWagerAmount) {
     return {
       isValid: false,
@@ -65,7 +65,7 @@ export const validateRound = (
   }
 
   // Check if round has started
-  const startTime = BigInt(round.round.start_time.toString());
+  const startTime = BigInt(round.start_time.toString());
   const currentTime = BigInt(Math.floor(Date.now() / 1000));
   if (startTime > currentTime) {
     return {
@@ -75,7 +75,7 @@ export const validateRound = (
   }
 
   // Check if round has ended
-  const endTime = BigInt(round.round.end_time.toString());
+  const endTime = BigInt(round.end_time.toString());
   if (endTime < currentTime) {
     return {
       isValid: false,

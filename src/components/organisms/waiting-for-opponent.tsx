@@ -20,7 +20,17 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
   
   const { round, playersCount, isLoading: isRoundLoading, error: roundError, queryRound } = useRoundQuery();
   
-  const creatorAddress = round?.round.creator;
+  // Debug the round object structure
+  console.log('[WaitingForOpponent] ===== ROUND DATA TRACE =====');
+  console.log('[WaitingForOpponent] 1. Round object:', round);
+  console.log('[WaitingForOpponent] 2. Round type:', typeof round);
+  console.log('[WaitingForOpponent] 3. Round keys:', round ? Object.keys(round) : 'null');
+  console.log('[WaitingForOpponent] 4. Round loading state:', isRoundLoading);
+  console.log('[WaitingForOpponent] 5. Round error state:', roundError);
+  console.log('[WaitingForOpponent] 6. PlayersCount:', playersCount);
+  console.log('[WaitingForOpponent] ===== END ROUND DATA TRACE =====');
+  
+  const creatorAddress = round?.creator;
   
   const [isCopied, setIsCopied] = useState(false);
   const totalPlayers = 2;
@@ -29,9 +39,19 @@ function WaitingForOpponentContent({ onStart }: WaitingForOpponentProps) {
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    console.log('[WaitingForOpponent] ===== COMPONENT MOUNT TRACE =====');
+    console.log('[WaitingForOpponent] 1. Component effect triggered');
+    console.log('[WaitingForOpponent] 2. RoundId from modalPayload:', roundId);
+    console.log('[WaitingForOpponent] 3. RoundId type:', typeof roundId);
+    console.log('[WaitingForOpponent] 4. QueryRound function available:', !!queryRound);
+    
     if (roundId) {
+      console.log('[WaitingForOpponent] 5. Calling queryRound with BigInt(' + roundId + ')');
       queryRound(BigInt(roundId));
+    } else {
+      console.log('[WaitingForOpponent] 5. NO roundId - skipping query');
     }
+    console.log('[WaitingForOpponent] ===== END COMPONENT MOUNT TRACE =====');
   }, [roundId, queryRound]);
 
   useEffect(() => {

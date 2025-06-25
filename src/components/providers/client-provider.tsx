@@ -19,10 +19,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       try {
         const sdkInstance = await init<SchemaType>({
           client: {
-            toriiUrl: dojoConfig.toriiUrl,
-            relayUrl: dojoConfig.relayUrl,
+            toriiUrl: process.env.NEXT_PUBLIC_TORII_URL || 'http://localhost:8080',
+            // relayUrl: dojoConfig.relayUrl,
             worldAddress: dojoConfig.manifest.world.address,
-          },
+            relayUrl: process.env.NEXT_PUBLIC_RELAY_URL || "/ip4/127.0.0.1/tcp/9092/ws",
+          } as any,
           domain: {
             name: "lyricsflip",
             version: "1.0",

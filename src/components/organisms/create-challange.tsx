@@ -1,26 +1,17 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import { useModalStore } from '@/store/modal-store';
-import { useSystemCalls } from "../../lib/dojo/useSystemCalls";
+import { useSystemCalls, GameMode, ChallengeType, genreToFelt252 } from "../../lib/dojo/useSystemCalls";
 import { useAccount } from "@starknet-react/core";
-import { CairoCustomEnum } from "starknet";
 import { toast } from 'sonner';
 
 export default function CreateChallenge() {
   const currency_Amount = { STRK: '18,678', USD: '5,676' };
   const [formData, setFormData] = useState({
     genre: '',
-    level: '',
-    duration: '',
-    numbersOfPlayers: '',
-    amount: '',
   });
   const [errors, setErrors] = useState({
     genre: '',
-    level: '',
-    duration: '',
-    numbersOfPlayers: '',
-    amount: '',
   });
   const [isCreating, setIsCreating] = useState(false);
 
@@ -53,35 +44,9 @@ export default function CreateChallenge() {
       newErrors.genre = 'Please select a genre';
       valid = false;
     }
-    if (!formData.level) {
-      newErrors.level = 'Please select a difficulty level';
-      valid = false;
-    }
-    if (!formData.duration) {
-      newErrors.duration = 'Please select a duration';
-      valid = false;
-    }
-    if (!formData.numbersOfPlayers) {
-      newErrors.numbersOfPlayers = 'Please select number of players';
-      valid = false;
-    }
-    if (!formData.amount) {
-      newErrors.amount = 'Please enter wager amount';
-      valid = false;
-    } else if (isNaN(Number(formData.amount))) {
-      newErrors.amount = 'Amount must be a number';
-      valid = false;
-    }
 
     setErrors(newErrors);
     return valid;
-  };
-
-  const GENRE_ENUM_MAP: Record<string, string> = {
-    pop: "Pop",
-    rock: "Rock",
-    hiphop: "HipHop",
-    rnb: "Rnb",
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,18 +61,26 @@ export default function CreateChallenge() {
     
     try {
       setIsCreating(true);
-      console.log("Creating round...");
+      console.log("Creating multiplayer round...");
       
-      const cairoVariant = GENRE_ENUM_MAP[formData.genre];
-      const genreEnum = new CairoCustomEnum({ [cairoVariant]: {} });
+      // Create the round with MultiPlayer mode (Challenge mode requires lyrics cards)
+      const roundId = await createRound(
+        GameMode.MultiPlayer, // Use MultiPlayer mode for basic multiplayer games
+        undefined, // No challenge type needed for MultiPlayer mode
+        undefined, // No challenge parameters needed
+        undefined
+      );
       
-      const roundId = await createRound(genreEnum);
       console.log("Round created successfully with ID:", roundId.toString());
+      console.log("Round parameters:", {
+        mode: "MultiPlayer",
+        genre: formData.genre,
+      });
       
       // Show success toast with round ID
-      toast.success('🎉 Round created successfully!', {
-        description: `Round ID: ${roundId.toString()}`,
-        duration: 3000,
+      toast.success('🎉 Challenge created successfully!', {
+        description: `Round ID: ${roundId.toString()} | Genre: ${formData.genre}`,
+        duration: 4000,
       });
       
       // Close this modal and open waiting modal with the real round ID
@@ -115,14 +88,17 @@ export default function CreateChallenge() {
       setTimeout(() => {
         openModal('waiting-for-opponent', { 
           roundId: roundId.toString(),
-          creatorAddress: account?.address 
+          creatorAddress: account?.address,
+          challengeDetails: {
+            genre: formData.genre,
+          }
         });
       }, 100);
       
     } catch (err) {
       console.error("Failed to create round:", err);
-      toast.error('Failed to create round', {
-        description: 'Please try again',
+      toast.error('Failed to create challenge', {
+        description: err instanceof Error ? err.message : 'Please try again',
         duration: 4000,
       });
       setIsCreating(false);
@@ -166,9 +142,19 @@ export default function CreateChallenge() {
               disabled={isCreating}
             >
               <option value="">Select a genre</option>
-              <option value="hiphop">HipHop</option>
-              <option value="afrobeats">Rock</option>
-              <option value="pop">Pop</option>
+              <option value="HipHop">Hip Hop</option>
+              <option value="Pop">Pop</option>
+              <option value="Rock">Rock</option>
+              <option value="RnB">R&B</option>
+              <option value="Electronic">Electronic</option>
+              <option value="Classical">Classical</option>
+              <option value="Jazz">Jazz</option>
+              <option value="Country">Country</option>
+              <option value="Blues">Blues</option>
+              <option value="Reggae">Reggae</option>
+              <option value="Afrobeat">Afrobeat</option>
+              <option value="Gospel">Gospel</option>
+              <option value="Folk">Folk</option>
             </select>
           </div>
           {errors.genre && (
@@ -176,120 +162,7 @@ export default function CreateChallenge() {
           )}
         </div>
 
-        <div className="flex flex-col gap-[8px]">
-          <label className="font-[500]" htmlFor="level">
-            Difficulty Level
-          </label>
-          <div className="border border-[#DBE2E8] px-[12px] rounded-[4px]">
-            <select
-              className="outline-none w-full p-[12px]"
-              name="level"
-              id="level"
-              value={formData.level}
-              onChange={handleChange}
-              disabled={isCreating}
-            >
-              <option value="">Select difficulty</option>
-              <option value="easy">Easy</option>
-              <option value="normal">Normal</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-          {errors.level && (
-            <p className="text-red-500 text-xs">{errors.level}</p>
-          )}
-        </div>
 
-        <div className="flex flex-col gap-[8px]">
-          <label className="font-[500]" htmlFor="duration">
-            Duration
-          </label>
-          <div className="border border-[#DBE2E8] px-[12px] rounded-[4px]">
-            <select
-              className="outline-none w-full p-[12px]"
-              name="duration"
-              id="duration"
-              value={formData.duration}
-              onChange={handleChange}
-              disabled={isCreating}
-            >
-              <option value="">Select duration</option>
-              <option value="15">15 sec</option>
-              <option value="30">30 sec</option>
-              <option value="60">60 sec</option>
-            </select>
-          </div>
-          {errors.duration && (
-            <p className="text-red-500 text-xs">{errors.duration}</p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-[8px]">
-          <label className="font-[500]" htmlFor="numbersOfPlayers">
-            Number of Players
-          </label>
-          <div className="border border-[#DBE2E8] px-[12px] rounded-[4px]">
-            <select
-              className="outline-none w-full p-[12px]"
-              name="numbersOfPlayers"
-              id="numbersOfPlayers"
-              value={formData.numbersOfPlayers}
-              onChange={handleChange}
-              disabled={isCreating}
-            >
-              <option value="">Select players</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-            </select>
-          </div>
-          {errors.numbersOfPlayers && (
-            <p className="text-red-500 text-xs">{errors.numbersOfPlayers}</p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-[8px]">
-          <label className="font-[500]" htmlFor="amount">
-            Wager Amount
-          </label>
-          <div className="border border-[#DBE2E8] px-[12px] rounded-[4px]">
-            <input
-              className="outline-none appearance-none w-full p-[12px]"
-              type="number"
-              id="amount"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              placeholder="Enter amount"
-              min="0"
-              step="1"
-              disabled={isCreating}
-              onKeyDown={(e) => {
-                if (e.key === '-' || e.key === 'e' || e.key === 'E') {
-                  e.preventDefault();
-                }
-              }}
-            />
-          </div>
-          {errors.amount && (
-            <p className="text-red-500 text-xs">{errors.amount}</p>
-          )}
-          <p className="flex space-x-2 items-center">
-            <span className="font-[400] text-[12px]">Wallet Balance:</span>
-            {currency_Amount &&
-              Object.entries(currency_Amount).map(
-                ([key, value]: [string, string]) => (
-                  <span
-                    key={key}
-                    className="font-[500] text-[#9747FF] text-[12px]"
-                  >
-                    {' '}
-                    {value} {key}
-                  </span>
-                ),
-              )}
-          </p>
-        </div>
 
         <div className="w-full mt-20">
           <button
