@@ -3,6 +3,7 @@ import { useEntityQuery, useModels, useModel, useEntityId } from '@dojoengine/sd
 import { ToriiQueryBuilder, MemberClause } from '@dojoengine/sdk';
 import { ModelsMapping, Round, RoundPlayer } from '../typescript/models.gen';
 import { useAccount } from '@starknet-react/core';
+import { mapRoundStateToEnum } from '../useSystemCalls';
 
 interface UseRoundQueryResult {
   round: Round | null;
@@ -11,6 +12,7 @@ interface UseRoundQueryResult {
   isLoading: boolean;
   error: string | null;
   queryRound: (roundId: bigint) => void;
+  roundStateText: string;
 }
 
 export const useRoundQuery = (): UseRoundQueryResult => {
@@ -20,6 +22,9 @@ export const useRoundQuery = (): UseRoundQueryResult => {
   const [error, setError] = useState<string | null>(null);
   const lastLoggedRoundRef = useRef<string | null>(null);
   const debugLogCountRef = useRef(0);
+
+  // Only query if account is connected to prevent unnecessary calls
+  const shouldQuery = account?.address && roundId;
 
   // Always query all rounds and round players to populate the store
   // This ensures we have data when we need it
@@ -116,6 +121,17 @@ export const useRoundQuery = (): UseRoundQueryResult => {
     return round ? Number(round.players_count || 0) : 0;
   }, [round]);
 
+  // Memoize round state text for better debugging
+  const roundStateText = useMemo(() => {
+    if (!round?.state) return 'UNKNOWN';
+    try {
+      return mapRoundStateToEnum(round.state);
+    } catch (error) {
+      console.warn('[useRoundQuery] Error mapping round state:', error, round.state);
+      return `ERROR(${round.state})`;
+    }
+  }, [round?.state]);
+
   // Query for a specific round - memoized to prevent unnecessary re-renders
   const queryRound = useCallback((targetRoundId: bigint) => {
     const roundIdString = targetRoundId.toString();
@@ -153,6 +169,7 @@ export const useRoundQuery = (): UseRoundQueryResult => {
     playersCount,
     isLoading,
     error,
-    queryRound
+    queryRound,
+    roundStateText
   };
 };
