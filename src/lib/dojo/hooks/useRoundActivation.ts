@@ -37,7 +37,9 @@ export const useRoundActivation = ({ roundId }: UseRoundActivationOptions): UseR
   // Computed state
   const isActive = useMemo(() => {
     if (!round?.state) return false;
-    return Number(round.state) === RoundStatus.IN_PROGRESS;
+    const roundState = Number(BigInt(round.state));
+    // Consider both IN_PROGRESS and PENDING as "active" since PENDING means round has started
+    return roundState === RoundStatus.IN_PROGRESS || roundState === RoundStatus.PENDING;
   }, [round?.state]);
   
   const combinedError = roundError || startError;
@@ -64,10 +66,13 @@ export const useRoundActivation = ({ roundId }: UseRoundActivationOptions): UseR
     // Small delay to let the query complete
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Check if round is already active
-    if (round?.state && Number(round.state) === RoundStatus.IN_PROGRESS) {
-      console.log('[useRoundActivation] Round is already active, skipping start');
-      return 'alreadyActive';
+    // Check if round is already active (either IN_PROGRESS or PENDING)
+    if (round?.state) {
+      const roundState = Number(BigInt(round.state));
+      if (roundState === RoundStatus.IN_PROGRESS || roundState === RoundStatus.PENDING) {
+        console.log('[useRoundActivation] Round is already active/pending, skipping start');
+        return 'alreadyActive';
+      }
     }
     
     // Guard against concurrent executions
@@ -79,6 +84,11 @@ export const useRoundActivation = ({ roundId }: UseRoundActivationOptions): UseR
       console.log('[useRoundActivation] Round started successfully');
       return 'started';
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Already signaled readiness') || errorMessage.includes('already started')) {
+        console.log('[useRoundActivation] Round already started (caught error), treating as success');
+        return 'alreadyActive';
+      }
       console.error('[useRoundActivation] Failed to start round:', error);
       throw error;
     } finally {
