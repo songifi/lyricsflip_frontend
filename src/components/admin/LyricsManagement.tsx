@@ -28,6 +28,7 @@ export function LyricsManagement({ isAdmin }: LyricsManagementProps) {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
+  const [batchUploadGenre, setBatchUploadGenre] = useState('');
   const [selectedLyric, setSelectedLyric] = useState<LyricsCard | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -122,7 +123,7 @@ export function LyricsManagement({ isAdmin }: LyricsManagementProps) {
       return;
     }
 
-    if (!selectedGenre) {
+    if (!batchUploadGenre) {
       toast.error('Please select a genre for batch upload');
       return;
     }
@@ -130,7 +131,7 @@ export function LyricsManagement({ isAdmin }: LyricsManagementProps) {
     setIsUploadingBatch(true);
     try {
       const cardsData: CardData[] = MOCK_LYRICS.map(lyric =>
-        mockLyricToCardData(lyric, selectedGenre)
+        mockLyricToCardData(lyric, batchUploadGenre)
       );
 
       const batchSize = 10;
@@ -226,8 +227,8 @@ export function LyricsManagement({ isAdmin }: LyricsManagementProps) {
               Genre for Batch Upload
             </label>
             <select
-              value={selectedGenre}
-              onChange={(e) => setSelectedGenre(e.target.value)}
+              value={batchUploadGenre}
+              onChange={(e) => setBatchUploadGenre(e.target.value)}
               disabled={!isAdmin || isUploadingBatch}
               className="w-full p-2 border rounded-md"
             >
@@ -240,7 +241,7 @@ export function LyricsManagement({ isAdmin }: LyricsManagementProps) {
           <div>
             <button
               onClick={handleBatchUpload}
-              disabled={!isAdmin || !selectedGenre || isUploadingBatch}
+              disabled={!isAdmin || !batchUploadGenre || isUploadingBatch}
               className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50"
             >
               {isUploadingBatch ? 'Uploading...' : `Upload ${MOCK_LYRICS.length} Mock Lyrics`}
