@@ -441,9 +441,9 @@ export function PlayerManagement({ isAdmin }: PlayerManagementProps) {
               <button
                 onClick={handleModeratePlayer}
                 className={`px-4 py-2 rounded-md text-white ${moderationAction === 'ban' ? 'bg-red-600 hover:bg-red-700' :
-                    moderationAction === 'suspend' ? 'bg-orange-600 hover:bg-orange-700' :
-                      moderationAction === 'warn' ? 'bg-yellow-600 hover:bg-yellow-700' :
-                        'bg-green-600 hover:bg-green-700'
+                  moderationAction === 'suspend' ? 'bg-orange-600 hover:bg-orange-700' :
+                    moderationAction === 'warn' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                      'bg-green-600 hover:bg-green-700'
                   }`}
               >
                 Confirm {moderationAction}

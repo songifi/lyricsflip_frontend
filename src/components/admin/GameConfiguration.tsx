@@ -93,10 +93,10 @@ export function GameConfiguration({ isAdmin }: GameConfigurationProps) {
   };
 
   const handleUpdateAdminAddress = async () => {
-    if (!isAdmin) {
-      toast.error('Admin access required');
-      return;
-    }
+    /*   if (!isAdmin) {
+        toast.error('Admin access required');
+        return;
+      } */
 
     if (!newAdminAddress) {
       toast.error('Please enter a valid admin address');
@@ -118,8 +118,13 @@ export function GameConfiguration({ isAdmin }: GameConfigurationProps) {
   };
 
   const handleSetConnectedWalletAsAdmin = async () => {
-    if (!isAdmin || !address) {
+    /* if (!isAdmin || !address) {
       toast.error('Admin access required and wallet must be connected');
+      return;
+    } */
+
+    if (!address) {
+      toast.error('Wallet must be connected');
       return;
     }
 
@@ -164,11 +169,11 @@ export function GameConfiguration({ isAdmin }: GameConfigurationProps) {
       </div>
 
       {/* Admin Notice */}
-      {!isAdmin && (
+      {/* {!isAdmin && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
           ⚠️ Admin access required to modify game configuration
         </div>
-      )}
+      )} */}
 
       {/* Contract-Backed Configuration */}
       <div className="bg-white p-6 rounded-lg shadow">
