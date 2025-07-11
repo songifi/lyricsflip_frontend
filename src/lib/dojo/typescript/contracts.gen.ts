@@ -2,15 +2,6 @@ import { DojoProvider, DojoCall } from "@dojoengine/core";
 import { Account, AccountInterface, BigNumberish, CairoOption, CairoCustomEnum, ByteArray } from "starknet";
 import * as models from "./models.gen";
 
-// Define CardData interface to match what the contract expects
-export interface CardData {
-	genre: CairoCustomEnum;
-	artist: BigNumberish;
-	title: BigNumberish;
-	year: BigNumberish;
-	lyrics: string;
-}
-
 export function setupWorld(provider: DojoProvider) {
 
 	const build_actions_addBatchLyricsCard_calldata = (cards: Array<CardData>): DojoCall => {
