@@ -1,4 +1,3 @@
-import { useSystemCalls } from '@/lib/dojo/useSystemCalls';
 import { MOCK_LYRICS } from '@/mock/mock';
 import { LyricData, SongOption } from '@/store';
 import { useGameStore, stopGameTimer, startGameTimer } from '@/store/game';
@@ -13,7 +12,8 @@ const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-export const useQuickGame = (genre: string) => {
+export const useSoloGameWithDojo = (genre: string) => {
+    
   const gameStore = useGameStore();
   const [currentLyric, setCurrentLyric] = useState<LyricData | null>(null);
   const [nextLyric, setNextLyric] = useState<LyricData | null>(null);
@@ -27,29 +27,13 @@ export const useQuickGame = (genre: string) => {
   } | null>(null);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
-  const {
-    nextCard,
-    submitAnswer: submitAnswerCall,
-    getPlayerProgress,
-    getCardCount,
-    checkAllPlayersAnswered,
-  } = useSystemCalls();
-
   // Start game and timer
   useEffect(() => {
     if (genre && gameStore.gameStatus === 'playing') {
-      const firstLyric =
-        MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
-      const secondLyric =
-        MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
-      setCurrentLyric({
-        ...firstLyric,
-        options: shuffleArray(firstLyric.options),
-      });
-      setNextLyric({
-        ...secondLyric,
-        options: shuffleArray(secondLyric.options),
-      });
+      const firstLyric = MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
+      const secondLyric = MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
+      setCurrentLyric({ ...firstLyric, options: shuffleArray(firstLyric.options) });
+      setNextLyric({ ...secondLyric, options: shuffleArray(secondLyric.options) });
       setIsGameStarted(true);
       setIsCardFlipped(false);
       startGameTimer();
@@ -59,6 +43,9 @@ export const useQuickGame = (genre: string) => {
     };
   }, [genre, gameStore.gameStatus]);
 
+
+
+
   // Monitor timeLeft and end game only once
   useEffect(() => {
     if (gameStore.timeLeft <= 0 && !gameResult && isGameStarted) {
@@ -66,13 +53,14 @@ export const useQuickGame = (genre: string) => {
     }
   }, [gameStore.timeLeft, gameResult, isGameStarted]);
 
+  
+
   const startNewRound = () => {
     if (gameStore.currentRound >= gameStore.maxRounds) {
       endGame(true); // End if max rounds reached
       return;
     }
-    const randomLyric =
-      MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
+    const randomLyric = MOCK_LYRICS[Math.floor(Math.random() * MOCK_LYRICS.length)];
     const shuffledOptions = shuffleArray(randomLyric.options);
     setCurrentLyric({ ...randomLyric, options: shuffledOptions });
     setSelectedOption(null);
@@ -104,8 +92,7 @@ export const useQuickGame = (genre: string) => {
     } else {
       gameStore.setGuessResult('incorrect');
       setWrongAttempts(newWrongAttempts);
-      if (newWrongAttempts >= 3) {
-        // Quick game allows 3 wrong attempts
+      if (newWrongAttempts >= 3) { // Quick game allows 3 wrong attempts
         setTimeout(() => endGame(false), 2000);
         return;
       }
