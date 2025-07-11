@@ -3,20 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from "@starknet-react/core";
 import { useAdminFunctions } from '@/hooks/useAdminFunctions';
-import { useSystemCalls, mockLyricToCardData, Genre, CardData } from '@/lib/dojo/useSystemCalls';
-import { MOCK_LYRICS } from '@/mock/mock';
-import { CairoCustomEnum } from 'starknet';
+import { useSystemCalls } from '@/lib/dojo/useSystemCalls';
 import { toast } from 'sonner';
+
+// Import the new admin components
+import { LyricsManagement } from '@/components/admin/LyricsManagement';
+import { GameConfiguration } from '@/components/admin/GameConfiguration';
+import { PlayerManagement } from '@/components/admin/PlayerManagement';
+import { SystemAnalytics } from '@/components/admin/SystemAnalytics';
+import { BatchOperations } from '@/components/admin/BatchOperations';
+import { EmergencyControls } from '@/components/admin/EmergencyControls';
+
+type AdminTab = 'overview' | 'lyrics' | 'config' | 'players' | 'analytics' | 'batch' | 'emergency';
 
 export default function AdminDashboard() {
   const { account, address } = useAccount();
-  const { setAdminAddress, setCardsPerRound, setGameConfig, checkIsAdmin } = useAdminFunctions();
-  const { addBatchLyricsCard } = useSystemCalls();
-  const [adminAddress, setAdminAddressInput] = useState('');
-  const [cardsPerRound, setCardsPerRoundInput] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUploadingLyrics, setIsUploadingLyrics] = useState(false);
+  const { checkIsAdmin } = useAdminFunctions();
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(false);
   const [isCurrentWalletAdmin, setIsCurrentWalletAdmin] = useState<boolean | null>(null);
   const [error, setError] = useState('');
@@ -33,12 +36,12 @@ export default function AdminDashboard() {
 
   const handleCheckAdminStatus = async () => {
     if (!address) return;
-    
+
     setIsCheckingAdmin(true);
     try {
       const isAdmin = await checkIsAdmin();
       setIsCurrentWalletAdmin(isAdmin);
-      
+
       if (isAdmin) {
         setSuccess(`✅ This wallet (${address.slice(0, 6)}...${address.slice(-4)}) IS an admin!`);
         setError('');
@@ -55,133 +58,19 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSetAdminAddress = async () => {
-    if (!adminAddress) {
-      setError('Please enter an admin address');
-      return;
-    }
-    setIsLoading(true);
-    setError('');
-    try {
-      await setAdminAddress(adminAddress);
-      setSuccess('Admin address updated successfully');
-      setAdminAddressInput(''); // Clear input
-    } catch (err) {
-      setError('Failed to update admin address');
-      console.error(err);
-    }
-    setIsLoading(false);
-  };
-
-  const handleSetConnectedWalletAsAdmin = async () => {
-    if (!address) {
-      setError('No wallet connected');
-      return;
-    }
-    setIsLoading(true);
-    setError('');
-    try {
-      // Initialize game config with the connected wallet as admin
-      await setGameConfig(address);
-      setSuccess('Connected wallet set as admin successfully');
-      // Recheck admin status
-      await handleCheckAdminStatus();
-    } catch (err: any) {
-      const errorMessage = err?.message || err?.toString() || '';
-      if (errorMessage.includes('Game config already initialized')) {
-        setSuccess('Game config was already initialized. Admin address updated successfully.');
-      } else if (errorMessage.includes('game config initialized')) {
-        setSuccess('Game config was already initialized. Admin address updated successfully.');
-      } else {
-        setError('Failed to set connected wallet as admin: ' + errorMessage);
-      }
-      console.error(err);
-    }
-    setIsLoading(false);
-  };
-
-  const handleSetCardsPerRound = async () => {
-    if (!cardsPerRound || isNaN(Number(cardsPerRound))) {
-      setError('Please enter a valid number of cards');
-      return;
-    }
-    setIsLoading(true);
-    setError('');
-    try {
-      await setCardsPerRound(Number(cardsPerRound));
-      setSuccess('Cards per round updated successfully');
-      setCardsPerRoundInput(''); // Clear input
-    } catch (err) {
-      setError('Failed to update cards per round');
-      console.error(err);
-    }
-    setIsLoading(false);
-  };
-
-  const handleBatchUploadLyrics = async () => {
-    if (!selectedGenre) {
-      setError('Please select a genre for the lyrics');
-      return;
-    }
-
-    // Check if current wallet is admin before proceeding
-    if (isCurrentWalletAdmin === false) {
-      setError('❌ Current wallet is not an admin! Please switch to your admin wallet first.');
-      return;
-    }
-
-    setIsUploadingLyrics(true);
-    setError('');
-    
-    try {
-      console.log(`Starting batch upload of ${MOCK_LYRICS.length} lyrics for genre: ${selectedGenre}`);
-      
-      // Convert mock lyrics to CardData format
-      const genreEnum = new CairoCustomEnum({ [selectedGenre]: {} });
-      const cardsData: CardData[] = MOCK_LYRICS.map(lyric => mockLyricToCardData(lyric, selectedGenre));
-      
-      // Upload in batches of 10 to avoid transaction size limits
-      const batchSize = 10;
-      for (let i = 0; i < cardsData.length; i += batchSize) {
-        const batch = cardsData.slice(i, i + batchSize);
-        console.log(`Uploading batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(cardsData.length / batchSize)} (${batch.length} cards)`);
-        
-        await addBatchLyricsCard(batch);
-        
-        // Add a small delay between batches to avoid overwhelming the network
-        if (i + batchSize < cardsData.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-      
-      setSuccess(`Successfully uploaded ${MOCK_LYRICS.length} lyrics cards for ${selectedGenre} genre!`);
-      toast.success(`Uploaded ${MOCK_LYRICS.length} lyrics cards`, {
-        description: `All ${selectedGenre} lyrics have been added to the game`,
-        duration: 4000
-      });
-      setSelectedGenre(''); // Clear selection
-    } catch (err: any) {
-      const errorMessage = err?.message || err?.toString() || '';
-      if (errorMessage.includes('caller not admin')) {
-        setError('❌ Current wallet is not an admin! Please switch to your admin wallet and try again.');
-      } else {
-        setError(`Failed to upload lyrics: ${errorMessage}`);
-      }
-      toast.error('Upload failed', {
-        description: errorMessage.includes('caller not admin') 
-          ? 'Current wallet is not an admin' 
-          : errorMessage,
-        duration: 4000
-      });
-      console.error('Batch upload error:', err);
-    } finally {
-      setIsUploadingLyrics(false);
-    }
-  };
+  const tabs = [
+    { id: 'overview' as AdminTab, name: 'Overview', icon: '🏠' },
+    { id: 'lyrics' as AdminTab, name: 'Lyrics Database', icon: '🎵' },
+    { id: 'config' as AdminTab, name: 'Game Config', icon: '⚙️' },
+    { id: 'players' as AdminTab, name: 'Player Management', icon: '👥' },
+    { id: 'analytics' as AdminTab, name: 'Analytics', icon: '📊' },
+    { id: 'batch' as AdminTab, name: 'Batch Operations', icon: '📦' },
+    { id: 'emergency' as AdminTab, name: 'Emergency Controls', icon: '🚨' },
+  ];
 
   if (!account) {
     return (
-      <main className="max-w-4xl mx-auto p-6">
+      <main className="max-w-7xl mx-auto p-6">
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
           Please connect your wallet to access the admin dashboard
         </div>
@@ -190,175 +79,145 @@ export default function AdminDashboard() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-      
-      <div className="space-y-8">
-        {/* Admin Status Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Admin Status Check</h2>
-          <div className="space-y-4">
-            <div className="text-sm text-gray-600">
-              <p><strong>Current Wallet:</strong> {address}</p>
-              <p className="text-xs mt-1">Check if this wallet has admin privileges</p>
-            </div>
-            
-            <button
-              onClick={handleCheckAdminStatus}
-              disabled={isCheckingAdmin}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {isCheckingAdmin ? 'Checking...' : 'Check Admin Status'}
-            </button>
-            
-            {isCurrentWalletAdmin !== null && (
-              <div className={`p-3 rounded-md ${
-                isCurrentWalletAdmin 
-                  ? 'bg-green-50 border border-green-200 text-green-700'
-                  : 'bg-red-50 border border-red-200 text-red-700'
-              }`}>
-                {isCurrentWalletAdmin 
-                  ? '✅ This wallet has admin privileges! You can upload lyrics.'
-                  : '❌ This wallet does not have admin privileges. Try switching to a different wallet from your collection of 10 wallets.'
-                }
-              </div>
-            )}
-          </div>
-        </div>
+    <main className="max-w-7xl mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-4">LyricsFlip Admin Dashboard</h1>
 
-        {/* Admin Address Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Set Admin Address</h2>
-          <div className="space-y-4">
+        {/* Admin Status Card */}
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                New Admin Address
-              </label>
-              <input
-                type="text"
-                value={adminAddress}
-                onChange={(e) => setAdminAddressInput(e.target.value)}
-                className="w-full p-2 border rounded-md"
-                placeholder="Enter StarkNet address"
-              />
-            </div>
-            <div className="flex gap-4">
-              <button
-                onClick={handleSetAdminAddress}
-                disabled={isLoading || isCurrentWalletAdmin === false}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isLoading ? 'Updating...' : 'Update Admin Address'}
-              </button>
-              <button
-                onClick={handleSetConnectedWalletAsAdmin}
-                disabled={isLoading}
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
-              >
-                {isLoading ? 'Updating...' : 'Use Connected Wallet'}
-              </button>
-            </div>
-            {address && (
-              <div className="text-sm text-gray-500 mt-2">
-                Connected Wallet: {address}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Cards Per Round Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Set Cards Per Round</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Number of Cards
-              </label>
-              <input
-                type="number"
-                value={cardsPerRound}
-                onChange={(e) => setCardsPerRoundInput(e.target.value)}
-                className="w-full p-2 border rounded-md"
-                placeholder="Enter number of cards"
-                min="1"
-              />
-            </div>
-            <button
-              onClick={handleSetCardsPerRound}
-              disabled={isLoading || isCurrentWalletAdmin === false}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isLoading ? 'Updating...' : 'Update Cards Per Round'}
-            </button>
-          </div>
-        </div>
-
-        {/* Batch Lyrics Upload Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Upload Lyrics Database</h2>
-          <div className="space-y-4">
-            {isCurrentWalletAdmin === false && (
-              <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
-                <p className="text-sm">
-                  ⚠️ <strong>Admin Required:</strong> You need to switch to your admin wallet to upload lyrics. 
-                  Use the "Check Admin Status" button above to test different wallets.
-                </p>
-              </div>
-            )}
-            
-            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md">
-              <p className="text-sm">
-                This will upload all {MOCK_LYRICS.length} mock lyrics to the contract database. 
-                Select a genre to categorize all lyrics under.
+              <h2 className="text-lg font-semibold">Admin Status</h2>
+              <p className="text-sm text-gray-600">
+                Current Wallet: {address?.slice(0, 8)}...{address?.slice(-6)}
               </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Genre for All Lyrics
-              </label>
-              <select
-                value={selectedGenre}
-                onChange={(e) => setSelectedGenre(e.target.value)}
-                className="w-full p-2 border rounded-md"
-                disabled={isUploadingLyrics || isCurrentWalletAdmin === false}
-              >
-                <option value="">Select a genre</option>
-                {Object.keys(Genre).filter(key => isNaN(Number(key))).map(genre => (
-                  <option key={genre} value={genre}>{genre}</option>
-                ))}
-              </select>
             </div>
             <div className="flex items-center gap-4">
               <button
-                onClick={handleBatchUploadLyrics}
-                disabled={isUploadingLyrics || !selectedGenre || isCurrentWalletAdmin === false}
-                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50"
+                onClick={handleCheckAdminStatus}
+                disabled={isCheckingAdmin}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
               >
-                {isUploadingLyrics ? 'Uploading...' : 'Upload Lyrics Database'}
+                {isCheckingAdmin ? 'Checking...' : 'Check Status'}
               </button>
-              {isUploadingLyrics && (
-                <div className="text-sm text-gray-600">
-                  This may take a few minutes...
+              {isCurrentWalletAdmin !== null && (
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${isCurrentWalletAdmin
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
+                  }`}>
+                  {isCurrentWalletAdmin ? '✅ Admin' : '❌ Not Admin'}
                 </div>
               )}
-            </div>
-            <div className="text-xs text-gray-500">
-              <p><strong>Note:</strong> This uploads lyrics in batches of 10 to avoid transaction limits.</p>
-              <p>All lyrics will be categorized under the selected genre.</p>
             </div>
           </div>
         </div>
 
-        {/* Status Messages */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error}
+        {/* Navigation Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === tab.id
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <span>{tab.icon}</span>
+                {tab.name}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="mt-6">
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-2">🎵 Lyrics Database</h3>
+                <p className="text-gray-600 text-sm">Manage lyrics cards, view, edit, and remove entries</p>
+                <button
+                  onClick={() => setActiveTab('lyrics')}
+                  className="mt-3 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                >
+                  Manage →
+                </button>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-2">⚙️ Game Config</h3>
+                <p className="text-gray-600 text-sm">Configure game parameters and settings</p>
+                <button
+                  onClick={() => setActiveTab('config')}
+                  className="mt-3 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                >
+                  Configure →
+                </button>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-2">👥 Players</h3>
+                <p className="text-gray-600 text-sm">Monitor and moderate player accounts</p>
+                <button
+                  onClick={() => setActiveTab('players')}
+                  className="mt-3 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                >
+                  Manage →
+                </button>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-2">📊 Analytics</h3>
+                <p className="text-gray-600 text-sm">System performance and usage analytics</p>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className="mt-3 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                >
+                  View →
+                </button>
+              </div>
+            </div>
+
+            {/* Status Messages */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {success}
+              </div>
+            )}
           </div>
         )}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-            {success}
-          </div>
+
+        {activeTab === 'lyrics' && (
+          <LyricsManagement isAdmin={isCurrentWalletAdmin === true} />
+        )}
+
+        {activeTab === 'config' && (
+          <GameConfiguration isAdmin={isCurrentWalletAdmin === true} />
+        )}
+
+        {activeTab === 'players' && (
+          <PlayerManagement isAdmin={isCurrentWalletAdmin === true} />
+        )}
+
+        {activeTab === 'analytics' && (
+          <SystemAnalytics isAdmin={isCurrentWalletAdmin === true} />
+        )}
+
+        {activeTab === 'batch' && (
+          <BatchOperations isAdmin={isCurrentWalletAdmin === true} />
+        )}
+
+        {activeTab === 'emergency' && (
+          <EmergencyControls isAdmin={isCurrentWalletAdmin === true} />
         )}
       </div>
     </main>
