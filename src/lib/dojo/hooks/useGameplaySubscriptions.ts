@@ -6,6 +6,8 @@ import { ModelsMapping } from '../typescript/models.gen';
 interface GameplayEvents {
   onRoundStateChange?: (roundData: any) => void;
   onPlayerJoined?: (playerData: any) => void;
+  onPlayerAnswer?: (answerData: any) => void;
+  onPlayerStateChange?: (playerData: any) => void;
 }
 
 interface UseGameplaySubscriptionsResult {
@@ -45,6 +47,7 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
         callback: ({ data, error }: { data?: any; error?: any }) => {
           if (error) {
             console.error('[useGameplaySubscriptions] Round subscription error:', error);
+            setSubscriptionError('Subscription to round state failed or channel closed.');
             return;
           }
           
@@ -72,9 +75,59 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
       });
       subs.push(roundSubscription);
 
-      // TODO: Add more specific subscriptions for PlayerAnswer and RoundPlayer
-      // when the SDK API is more stable. For now, the Round subscription
-      // will handle the most critical state changes.
+      // Subscribe to PlayerAnswer events for this round
+      const playerAnswerQuery = new ToriiQueryBuilder()
+        .withClause(
+          MemberClause(ModelsMapping.PlayerAnswer, "round_id", "Eq", roundId).build()
+        )
+        .includeHashedKeys();
+      
+      const [__, playerAnswerSubscription] = await sdk.subscribeEntityQuery({
+        query: playerAnswerQuery,
+        callback: ({ data, error }: { data?: any; error?: any }) => {
+          if (error) {
+            console.error('[useGameplaySubscriptions] PlayerAnswer subscription error:', error);
+            setSubscriptionError('Subscription to player answers failed or channel closed.');
+            return;
+          }
+          if (data && callbacks.onPlayerAnswer) {
+            const answerEntity = Object.values(data).pop(); // Get the most recent answer event
+            const answerData = (answerEntity as any)?.models?.lyricsflip?.PlayerAnswer;
+            if (answerData) {
+              console.log('[useGameplaySubscriptions] PlayerAnswer event received:', answerData);
+              callbacks.onPlayerAnswer(answerData);
+            }
+          }
+        }
+      });
+      subs.push(playerAnswerSubscription);
+
+      // Subscribe to RoundPlayer state changes for this round
+      const roundPlayerQuery = new ToriiQueryBuilder()
+        .withClause(
+          MemberClause(ModelsMapping.RoundPlayer, "player_to_round_id", "Eq", roundId).build()
+        )
+        .includeHashedKeys();
+      
+      const [___, roundPlayerSubscription] = await sdk.subscribeEntityQuery({
+        query: roundPlayerQuery,
+        callback: ({ data, error }: { data?: any; error?: any }) => {
+          if (error) {
+            console.error('[useGameplaySubscriptions] RoundPlayer subscription error:', error);
+            setSubscriptionError('Subscription to player state failed or channel closed.');
+            return;
+          }
+          if (data && callbacks.onPlayerStateChange) {
+            const playerEntity = Object.values(data).pop(); // Get the most recent player state change
+            const playerData = (playerEntity as any)?.models?.lyricsflip?.RoundPlayer;
+            if (playerData) {
+              console.log('[useGameplaySubscriptions] RoundPlayer state changed:', playerData);
+              callbacks.onPlayerStateChange(playerData);
+            }
+          }
+        }
+      });
+      subs.push(roundPlayerSubscription);
 
       subscriptionsRef.current = subs;
       setIsSubscribed(true);

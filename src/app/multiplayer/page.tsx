@@ -8,8 +8,7 @@ import { useEffect, useState } from 'react';
 import { useModalStore } from '@/store/modal-store';
 import WaitingForOpponent from '@/components/organisms/waiting-for-opponent';
 import { useMultiplayerGame } from '@/lib/dojo/hooks/useMultiplayerGame';
-import { useGameplaySubscriptions } from '@/lib/dojo/hooks/useGameplaySubscriptions';
-import { Answer } from '@/lib/dojo/useSystemCalls';
+import { Answer, parseQuestionCardOption, mapRoundStateToEnum } from '@/lib/dojo/useSystemCalls';
 import LoadingSpinner from '@/components/atoms/loading-spinner';
 
 // Define the SongOption type
@@ -45,15 +44,13 @@ export default function MultiplayerPage() {
     correctAnswers,
     totalAnswers,
     isLoading,
-    error
+    error,
+    lastAnswerCorrectness,
+    isGameComplete
   } = useMultiplayerGame(roundIdBigInt!);
-
-  // Set up real-time subscriptions
-  const { subscribeToGameplay, unsubscribeFromGameplay, isSubscribed } = useGameplaySubscriptions();
 
   // Local state for UI
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [lastAnswerResult, setLastAnswerResult] = useState<{ isCorrect: boolean; option: number } | null>(null);
 
   // Validate round ID
   useEffect(() => {
@@ -64,52 +61,28 @@ export default function MultiplayerPage() {
     }
   }, [roundIdBigInt, router]);
 
-  // Set up subscriptions when component mounts
+  // Auto-start game when round state changes to IN_PROGRESS or PENDING
   useEffect(() => {
-    if (roundIdBigInt) {
-      // Temporarily disable subscriptions as they're causing issues
-      // subscribeToGameplay(roundIdBigInt, {
-      //   onRoundStateChange: (roundData) => {
-      //     console.log('[MultiplayerPage] Round state changed:', roundData);
-      //     // The useMultiplayerGame hook will handle state updates automatically
-      //   }
-      // });
-
-      return () => {
-        // unsubscribeFromGameplay();
-      };
-    }
-  }, [roundIdBigInt]);
-
-  // Auto-start game when round state changes to IN_PROGRESS
-  useEffect(() => {
+    // PROPER BIGINT CONVERSION
+    const roundState = round?.state ? Number(BigInt(round.state)) : null;
+    const roundStateText = round?.state ? mapRoundStateToEnum(round.state) : 'UNKNOWN';
+    
     console.log('[MultiplayerPage] Checking auto-start conditions:', {
-      roundState: round?.state,
+      roundState,
+      roundStateText,
       gamePhase,
-      shouldStart: round?.state === 1 && gamePhase === 'starting'
+      shouldStart: (roundState === 1 || roundState === 3) && gamePhase === 'starting'
     });
     
-    if (round?.state === 1 && gamePhase === 'starting') {
-      console.log('[MultiplayerPage] Round started, getting first card...');
+    // Try to get first card if round is IN_PROGRESS (1) or PENDING (3)
+    if ((roundState === 1 || roundState === 3) && gamePhase === 'starting') {
+      console.log('[MultiplayerPage] Round started/pending, getting first card...');
       getNextCard();
     }
-  }, [round?.state, gamePhase, getNextCard]);
-
-  // Manual trigger for development - if we're stuck in starting phase
-  useEffect(() => {
-    if (gamePhase === 'starting' && round?.state === 1) {
-      const timer = setTimeout(() => {
-        console.log('[MultiplayerPage] Manual trigger: Getting first card...');
-        getNextCard();
-      }, 2000); // Wait 2 seconds then manually trigger
-
-      return () => clearTimeout(timer);
-    }
-  }, [gamePhase, round?.state, getNextCard]);
+  }, [round?.state, gamePhase]); // Remove getNextCard from dependencies to prevent re-renders
 
   // Handle back button
   const handleBack = () => {
-    unsubscribeFromGameplay();
     router.push('/');
   };
 
@@ -126,21 +99,39 @@ export default function MultiplayerPage() {
     try {
       await submitAnswer(index as Answer);
       
-      // Show result feedback
-      // Note: The actual correctness will be determined by the contract
-      // For now, we'll just show that an answer was submitted
-      setLastAnswerResult({ isCorrect: false, option: index }); // Will be updated by contract response
-      
       // Reset selection after delay
       setTimeout(() => {
         setSelectedOption(null);
-        setLastAnswerResult(null);
       }, 3000);
       
     } catch (err) {
       console.error('[MultiplayerPage] Failed to submit answer:', err);
       setSelectedOption(null);
     }
+  };
+
+  // Extract options from the current card
+  const songOptions: SongOption[] = currentCard ? [
+    parseQuestionCardOption(currentCard.option_one),
+    parseQuestionCardOption(currentCard.option_two),
+    parseQuestionCardOption(currentCard.option_three),
+    parseQuestionCardOption(currentCard.option_four),
+  ] : [];
+
+  // Determine correct option based on game state
+  const getCorrectOption = (): SongOption | null => {
+    if (!currentCard || lastAnswerCorrectness === null || selectedOption === null) {
+      return null;
+    }
+    
+    // If the last answer was correct, the selected option is the correct one
+    if (lastAnswerCorrectness) {
+      return songOptions[selectedOption] || null;
+    }
+    
+    // If the answer was wrong, we don't know which one was correct
+    // The contract doesn't tell us the correct answer, only if ours was right
+    return null;
   };
 
   // Handle loading state
@@ -218,14 +209,6 @@ export default function MultiplayerPage() {
     );
   }
 
-  // Extract options from the current card
-  const songOptions: SongOption[] = currentCard ? [
-    { title: `Option 1`, artist: 'Artist 1' },
-    { title: `Option 2`, artist: 'Artist 2' },
-    { title: `Option 3`, artist: 'Artist 3' },
-    { title: `Option 4`, artist: 'Artist 4' },
-  ] : [];
-
   // Render actual gameplay UI
   return (
     <div className="container mx-auto px-4 py-6">
@@ -242,9 +225,6 @@ export default function MultiplayerPage() {
         <p className="text-gray-600 text-sm">
           Round ID: {roundIdBigInt.toString()} | Players: {playersCount} | Score: {myScore}
         </p>
-        {!isSubscribed && (
-          <p className="text-yellow-600 text-sm">⚠️ Not connected to real-time updates</p>
-        )}
         {(gamePhase === 'starting' || gamePhase === 'waiting') && (
           <button
             onClick={() => {
@@ -291,12 +271,12 @@ export default function MultiplayerPage() {
         <div className="lg:col-start-3 lg:col-span-1 order-2 lg:order-3">
           <StatisticsPanel
             time={`${timeRemaining}s`}
-            potWin={`Score: ${myScore}`}
+            myScore={myScore}
             scores={`${correctAnswers}/${totalAnswers} correct`}
             multiplayer={true}
           />
           
-          {gamePhase === 'card_results' && lastAnswerResult && (
+          {gamePhase === 'card_results' && (
             <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
               <p className="text-sm font-medium">Answer submitted!</p>
               <p className="text-xs text-gray-600">Waiting for results...</p>
@@ -310,7 +290,7 @@ export default function MultiplayerPage() {
           options={songOptions}
           onSelect={handleSongSelect}
           selectedOption={selectedOption !== null ? songOptions[selectedOption] : null}
-          correctOption={null} // Will be revealed after answer submission
+          correctOption={getCorrectOption()}
         />
       )}
 

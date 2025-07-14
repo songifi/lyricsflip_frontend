@@ -124,6 +124,8 @@ export const ChallengeModal = () => {
         return { text: 'Waiting for players', color: 'text-green-500' };
       case RoundStatus.IN_PROGRESS:
         return { text: 'In progress', color: 'text-yellow-500' };
+      case RoundStatus.PENDING:
+        return { text: 'Starting...', color: 'text-blue-500' };
       case RoundStatus.ENDED:
         return { text: 'Ended', color: 'text-red-500' };
       default:
