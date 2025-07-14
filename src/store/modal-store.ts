@@ -9,18 +9,23 @@ type ModalType =
   | 'wager-summary'
   | 'won'
   | 'lost'
+  | 'create-challenge'
+  | 'waiting-for-opponent'
+  | 'challenge'
   | null;
 
 interface ModalState {
   isOpen: boolean;
   modalType: ModalType;
-  openModal: (type: ModalType) => void;
+  modalPayload?: any;
+  openModal: (type: ModalType, payload?: any) => void;
   closeModal: () => void;
 }
 
 export const useModalStore = create<ModalState>((set) => ({
   isOpen: false,
   modalType: null,
-  openModal: (type) => set({ isOpen: true, modalType: type }),
-  closeModal: () => set({ isOpen: false, modalType: null }),
+  modalPayload: undefined,
+  openModal: (type, payload) => set({ isOpen: true, modalType: type, modalPayload: payload }),
+  closeModal: () => set({ isOpen: false, modalType: null, modalPayload: undefined }),
 }));

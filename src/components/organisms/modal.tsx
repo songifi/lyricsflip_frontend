@@ -20,6 +20,8 @@ interface ModalProps {
   footerContent?: ReactNode;
   primaryActionLabel?: string;
   onPrimaryAction?: () => void;
+  showHeader?: boolean;
+  showFooter?: boolean;
 }
 
 export function Modal({
@@ -31,6 +33,8 @@ export function Modal({
   footerContent,
   primaryActionLabel = 'Confirm',
   onPrimaryAction,
+  showHeader = true,
+  showFooter = true,
 }: ModalProps) {
   const handlePrimaryAction = () => {
     if (onPrimaryAction) {
@@ -46,25 +50,28 @@ export function Modal({
         side="right"
         className="sm:max-w-[580px] top-8 bottom-8 right-8 w-[calc(100%-64px)] h-[calc(100%-64px)] rounded-lg overflow-y-auto"
       >
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
-          {description && (
-            <SheetDescription className="text-sm">
-              {description}
-            </SheetDescription>
-          )}
-        </SheetHeader>
+        {showHeader && (
+          <SheetHeader>
+            <SheetTitle>{title}</SheetTitle>
+            {description && (
+              <SheetDescription className="text-sm">
+                {description}
+              </SheetDescription>
+            )}
+          </SheetHeader>
+        )}
         <div className="py-4">{children}</div>
-
-        <SheetFooter className='w-full'>
-          {footerContent ? (
-            footerContent
-          ) : (
-            <Button variant="purple" size="full" onClick={handlePrimaryAction}>
-              {primaryActionLabel}
-            </Button>
-          )}
-        </SheetFooter>
+        {showFooter && (
+          <SheetFooter className='w-full'>
+            {footerContent ? (
+              footerContent
+            ) : (
+              <Button variant="purple" size="full" onClick={handlePrimaryAction}>
+                {primaryActionLabel}
+              </Button>
+            )}
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
   );
