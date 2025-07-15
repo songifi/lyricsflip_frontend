@@ -16,11 +16,18 @@ import { WagerSummaryContent } from './WagerSummaryModal';
 import { WagerDetails } from '@/store';
 import { useGameStore } from '@/store/game';
 import { useRouter } from 'next/navigation';
+import useSoloGameWithDojo from '@/features/game/hooks/useSoloGameWithDojo';
+import { toast } from 'sonner';
 
 export function WagerModal() {
   const router = useRouter();
   const { isOpen, closeModal, modalType } = useModalStore();
   const [stage, setStage] = useState<'form' | 'summary'>('form');
+  const [isCreatingRound, setIsCreatingRound] = useState(false);
+  const [roundCreationError, setRoundCreationError] = useState<string | null>(
+    null,
+  );
+
   const [wagerDetails, setWagerDetails] = useState<WagerDetails>({
     genre: '',
     difficulty: '',
@@ -29,11 +36,13 @@ export function WagerModal() {
     wagerAmount: '',
     potentialWin: '',
   });
-  
-  const isModalOpen = isOpen && (modalType === 'single-wager' || modalType === 'multi-wager');
+
+  const isModalOpen =
+    isOpen && (modalType === 'single-wager' || modalType === 'multi-wager');
   const isMultiplayer = modalType === 'multi-wager';
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const startGame = useGameStore((state) => state.startGame);
+  const { handleCreateRound } = useSoloGameWithDojo();
 
   // Reset stage and form when modal closes
   useEffect(() => {
@@ -71,7 +80,8 @@ export function WagerModal() {
     if (!wagerDetails.difficulty) errors.difficulty = 'Difficulty is required';
     if (!wagerDetails.duration) errors.duration = 'Duration is required';
     if (!wagerDetails.odds) errors.odds = 'Odds are required';
-    if (!wagerDetails.wagerAmount) errors.wagerAmount = 'Wager amount is required';
+    if (!wagerDetails.wagerAmount)
+      errors.wagerAmount = 'Wager amount is required';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -84,30 +94,61 @@ export function WagerModal() {
     }
   };
 
-  const handleStartGame = () => {
-    startGame({
-      genre: wagerDetails.genre,
-      difficulty: wagerDetails.difficulty,
-      duration: wagerDetails.duration,
-      odds: parseFloat(wagerDetails.odds),
-      wagerAmount: parseFloat(wagerDetails.wagerAmount),
-      isMultiplayer: isMultiplayer
-    });
+  const handleStartGame = async () => {
+    let roundId: number | null = null;
+    const isSinglePlayer = modalType === 'single-wager' && !isMultiplayer;
 
-    closeModal();
-    // Route to appropriate game page based on mode
-    router.push(isMultiplayer ? '/multiplayer' : '/single-player');
-    
-    // Reset form
-    setWagerDetails({
-      genre: '',
-      difficulty: '',
-      duration: '',
-      odds: '',
-      wagerAmount: '',
-      potentialWin: '',
-    });
-    setStage('form');
+    setIsCreatingRound(true);
+    setRoundCreationError(null); // Clear previous errors
+
+    try {
+      if (isSinglePlayer) {
+        try {
+          const createdRound = await handleCreateRound();
+          roundId = Number(createdRound);
+          console.log(roundId, "round id")
+          if (!roundId) throw new Error('Invalid round ID returned');
+        } catch (err) {
+          const errorMsg =
+            err instanceof Error ? err.message : 'Failed to create round';
+          console.error('Error creating round:', err);
+          setRoundCreationError(errorMsg);
+          toast.error('Failed to create round', { description: errorMsg });
+          return;
+        }
+      }
+
+      const { genre, difficulty, duration, odds, wagerAmount } = wagerDetails;
+
+      startGame({
+        genre,
+        difficulty,
+        duration,
+        odds: parseFloat(odds),
+        wagerAmount: parseFloat(wagerAmount),
+        isMultiplayer,
+      });
+
+      closeModal();
+
+      const route = isSinglePlayer
+        ? `/single-player?round=${roundId}`
+        : '/multiplayer';
+      router.push(route);
+
+      // Reset form
+      setWagerDetails({
+        genre: '',
+        difficulty: '',
+        duration: '',
+        odds: '',
+        wagerAmount: '',
+        potentialWin: '',
+      });
+      setStage('form');
+    } finally {
+      setIsCreatingRound(false);
+    }
   };
 
   const renderWagerForm = () => (
@@ -266,10 +307,24 @@ export function WagerModal() {
     <Modal
       isOpen={isModalOpen}
       onClose={closeModal}
-      title={stage === 'form' ? `Wager (${isMultiplayer ? 'Multi' : 'Single'} Player)` : 'Wager Summary'}
-      description={stage === 'form' ? 'Configure your wager settings for the game.' : undefined}
-      primaryActionLabel={stage === 'form' ? 'Proceed to Summary' : 'Start Game'}
-      onPrimaryAction={stage === 'form' ? handleProceedToSummary : handleStartGame}
+      title={
+        stage === 'form'
+          ? `Wager (${isMultiplayer ? 'Multi' : 'Single'} Player)`
+          : 'Wager Summary'
+      }
+      description={
+        stage === 'form'
+          ? 'Configure your wager settings for the game.'
+          : undefined
+      }
+      primaryActionLabel={
+        stage === 'form' ? 'Proceed to Summary' : 'Start Game'
+      }
+      onPrimaryAction={
+        stage === 'form' ? handleProceedToSummary : handleStartGame
+      }
+      isLoading={isCreatingRound}
+      
     >
       {stage === 'form' ? (
         renderWagerForm()

@@ -102,6 +102,8 @@ export default function QuickGamePage() {
         selectedOption={selectedOption}
         correctOption={correctOption}
       />
+
+      
     </div>
   );
 }

@@ -22,6 +22,7 @@ interface ModalProps {
   onPrimaryAction?: () => void;
   showHeader?: boolean;
   showFooter?: boolean;
+  isLoading?: boolean;
 }
 
 export function Modal({
@@ -35,6 +36,7 @@ export function Modal({
   onPrimaryAction,
   showHeader = true,
   showFooter = true,
+  isLoading,
 }: ModalProps) {
   const handlePrimaryAction = () => {
     if (onPrimaryAction) {
@@ -62,12 +64,17 @@ export function Modal({
         )}
         <div className="py-4">{children}</div>
         {showFooter && (
-          <SheetFooter className='w-full'>
+          <SheetFooter className="w-full">
             {footerContent ? (
               footerContent
             ) : (
-              <Button variant="purple" size="full" onClick={handlePrimaryAction}>
-                {primaryActionLabel}
+              <Button
+                variant="purple"
+                size="full"
+                disabled={isLoading}
+                onClick={handlePrimaryAction}
+              >
+                {isLoading ? 'Processing..' : primaryActionLabel}
               </Button>
             )}
           </SheetFooter>

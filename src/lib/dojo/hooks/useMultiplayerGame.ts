@@ -103,7 +103,6 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
   useEffect(() => {
     if (roundId && account?.address) {
       console.log('[useMultiplayerGame] Subscribing to gameplay events for round:', roundId.toString());
-      
       subscribeToGameplay(roundId, {
         onPlayerStateChange: (playerData) => {
           // Check if the update is for the current player

@@ -1,17 +1,12 @@
+import { QuestionCard } from '@/lib/dojo/typescript/models.gen';
 import { Answer, GameMode, useSystemCalls } from '@/lib/dojo/useSystemCalls';
 import React, { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 
-export default function useSoloGameWithDojo(roundId: bigint) {
+export default function useSoloGameWithDojo() {
   const lastSubmissionTime = useRef<number>(0);
 
-  const {
-    nextCard,
-    submitAnswer,
-    getPlayerProgress,
-    getCardCount,
-    createRound,
-  } = useSystemCalls();
+  const { nextCard, submitAnswer, createRound } = useSystemCalls();
 
   const handleCreateRound = async (): Promise<bigint | null> => {
     try {
@@ -33,7 +28,7 @@ export default function useSoloGameWithDojo(roundId: bigint) {
   };
 
   const handleSubmitAnswer = useCallback(
-    async (answer: Answer): Promise<boolean> => {
+    async (roundId: bigint, answer: Answer): Promise<boolean> => {
       if (!roundId) {
         throw new Error('No round ID available');
       }
@@ -50,11 +45,27 @@ export default function useSoloGameWithDojo(roundId: bigint) {
       console.log('[handleSubmitAnswer] Answer submitted:', isCorrect);
       return true;
     },
-    [roundId, submitAnswer],
+    [submitAnswer],
+  );
+
+  const handleGetNextCard = useCallback(
+    async (roundId: bigint): Promise<QuestionCard> => {
+      if (!roundId) {
+        throw new Error('No round ID available');
+      }
+      try {
+        const card = await nextCard(roundId);
+        return card;
+      } catch (err) {
+        throw err;
+      }
+    },
+    [nextCard],
   );
 
   return {
     handleCreateRound,
     handleSubmitAnswer,
+    handleGetNextCard,
   };
 }
