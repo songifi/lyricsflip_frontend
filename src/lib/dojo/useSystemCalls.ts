@@ -7,6 +7,8 @@ import type { Round as ContractRound, RoundPlayer as ContractRoundPlayer, Questi
 import { ModelsMapping } from "./typescript/models.gen";
 import { getModel, ensureNestedModel } from "./utils/modelAccess";
 import { useState, useRef, useCallback } from "react";
+import { ToriiQueryBuilder, MemberClause } from '@dojoengine/sdk';
+import type { LyricsCard } from './typescript/models.gen';
 
 // Define game mode enum
 export enum GameMode {
@@ -88,7 +90,7 @@ export enum RoundStatus {
 // Helper function to map raw felt252 round state to readable enum
 export const mapRoundStateToEnum = (rawState: string | number | bigint): string => {
 	try {
-		// Handle hex string states (like "0x...53544152544544" = "STARTED")
+		// Handle hex string states (like "0x...5354415254524544" = "STARTED")
 		if (typeof rawState === 'string' && rawState.startsWith('0x')) {
 			// Check for known hex patterns
 			if (rawState.includes('57414954494e47')) { // "WAITING" in hex
@@ -322,6 +324,14 @@ export const mockLyricToCardData = (lyric: any, genreVariant: string): CardData 
 	};
 };
 
+// After parseQuestionCardOption
+export const parseLyricsCard = (card: LyricsCard) => {
+  return {
+    artist: felt252ToHexString(card.artist),
+    title: felt252ToHexString(card.title),
+  };
+};
+
 /**
  * Modern hook to handle system calls using Dojo SDK patterns.
  * Uses built-in optimistic updates and automatic state management.
@@ -333,6 +343,7 @@ export const useSystemCalls = () => {
 	
 	// Transaction management state
 	const [pendingTransactions, setPendingTransactions] = useState<Set<string>>(new Set());
+	const pendingTransactionsRef = useRef<Set<string>>(new Set());
 	const transactionQueueRef = useRef<Array<() => Promise<any>>>([]);
 	const processingQueueRef = useRef(false);
 	
@@ -370,24 +381,50 @@ export const useSystemCalls = () => {
 		}
 	}, []);
 
+	// Helper to clear transaction queue
+	const clearTransactionQueue = useCallback(() => {
+		console.log('[clearTransactionQueue] Clearing transaction queue and pending transactions');
+		// Clear the pending transactions immediately
+		const currentPending = Array.from(pendingTransactionsRef.current);
+		console.log('[clearTransactionQueue] Current pending transactions before clear:', currentPending);
+		
+		// Clear the queue and processing flag
+		transactionQueueRef.current = [];
+		processingQueueRef.current = false;
+		
+		// Clear both the ref and the state
+		pendingTransactionsRef.current.clear();
+		setPendingTransactions(new Set());
+		
+		console.log('[clearTransactionQueue] Transaction queue cleared');
+	}, []);
+
 	// Helper to add transaction to queue
 	const queueTransaction = useCallback(async <T>(
 		txKey: string, 
 		transactionFn: () => Promise<T>
 	): Promise<T> => {
-		if (pendingTransactions.has(txKey)) {
+		console.log(`[queueTransaction] Attempting to queue transaction: ${txKey}`);
+		console.log(`[queueTransaction] Current pending transactions:`, Array.from(pendingTransactionsRef.current));
+		
+		if (pendingTransactionsRef.current.has(txKey)) {
+			console.log(`[queueTransaction] ❌ Transaction ${txKey} already in progress`);
 			throw new Error(`Transaction ${txKey} already in progress`);
 		}
 
 		return new Promise<T>((resolve, reject) => {
 			const wrappedTransaction = async () => {
 				try {
+					// Add to both ref and state
+					pendingTransactionsRef.current.add(txKey);
 					setPendingTransactions(prev => new Set(prev).add(txKey));
 					const result = await transactionFn();
 					resolve(result);
 				} catch (error) {
 					reject(error);
 				} finally {
+					// Remove from both ref and state
+					pendingTransactionsRef.current.delete(txKey);
 					setPendingTransactions(prev => {
 						const newSet = new Set(prev);
 						newSet.delete(txKey);
@@ -411,6 +448,12 @@ export const useSystemCalls = () => {
 		const transactionId = uuidv4();
 		
 		try {
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Starting round creation`);
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Mode:`, mode, `(${GameMode[mode]})`);
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Challenge type:`, challengeType);
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Challenge params:`, { challengeParam1, challengeParam2 });
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Account address:`, account.address);
+			
 			// Prepare contract call types
 			const modeVariant = GameMode[mode];
 			const modeEnum = new CairoCustomEnum({ [modeVariant]: {} });
@@ -427,13 +470,14 @@ export const useSystemCalls = () => {
 				: new CairoOption<string>(1);
 
 			// Log the round creation parameters
-			console.log('[createRound] Creating round with params:', {
+			console.log(`[CreateRound] [${Date.now()}] Creating round with params:`, {
 				mode,
 				challengeType,
 				challengeParam1,
 				challengeParam2
 			});
 
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: About to execute createRound transaction`);
 			// Execute the create round transaction
 			const txResult = await client.actions.createRound(
 				account,
@@ -442,10 +486,20 @@ export const useSystemCalls = () => {
 				challengeParam1Option,
 				challengeParam2Option
 			);
+			
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Transaction executed successfully`);
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Transaction result:`, {
+				transactionHash: txResult.transaction_hash,
+				status: txResult.status,
+				result: txResult.result,
+				decoded: txResult.decoded
+			});
 		
 		// WAIT FOR THE ACTUAL ROUND TO BE CREATED AND GET ITS REAL ID
 		// Wait for the transaction to be processed and entities to update
+		console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Waiting for transaction to be processed...`);
 		await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time for state sync
+		console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Transaction processing wait completed`);
 		
 		// Helper function to normalize addresses for comparison
 		const normalizeAddress = (address: string): string => {
@@ -460,8 +514,13 @@ export const useSystemCalls = () => {
 		let foundNewRound = false;
 		const creationTimestamp = Date.now();
 		
+		console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Searching for newly created round...`);
+		console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Current account:`, account.address);
+		console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Available round models:`, roundModels ? Object.keys(roundModels).length : 'N/A');
+		
 		if (roundModels && account?.address) {
 			const normalizedCurrentAccount = normalizeAddress(account.address);
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Normalized current account:`, normalizedCurrentAccount);
 			
 			// Collect all rounds created by current account
 			const candidateRounds: Array<{id: bigint, timestamp: number}> = [];
@@ -478,6 +537,15 @@ export const useSystemCalls = () => {
 						const isCreatedByCurrentAccount = normalizedCreator === normalizedCurrentAccount;
 						const roundCreationTime = roundData.creation_time ? Number(roundData.creation_time) * 1000 : 0; // Convert to milliseconds
 						
+						console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Found round:`, {
+							roundId: roundId.toString(),
+							creator: creator,
+							normalizedCreator: normalizedCreator,
+							isCreatedByCurrentAccount: isCreatedByCurrentAccount,
+							creationTime: roundCreationTime,
+							state: roundData.state
+						});
+						
 						// Collect rounds created by current account
 						if (isCreatedByCurrentAccount) {
 							candidateRounds.push({
@@ -488,6 +556,8 @@ export const useSystemCalls = () => {
 					}
 				}
 			}
+			
+			console.log(`[CreateRound] [${Date.now()}] 🔍 DEBUG: Candidate rounds found:`, candidateRounds.length);
 			
 			// Sort by timestamp (most recent first) and then by ID (highest first)
 			candidateRounds.sort((a, b) => {
@@ -627,8 +697,14 @@ export const useSystemCalls = () => {
 		const roundIdBigInt = BigInt(roundId);
 		const playerEntityId = getEntityIdFromKeys([BigInt(account.address), roundIdBigInt]);
 
+		console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Starting join round process`);
+		console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Round ID:`, roundId);
+		console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Account address:`, account.address);
+		console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Player entity ID:`, playerEntityId);
+
 		try {
 			// Optimistic update - mark player as joined
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Applying optimistic update`);
 			state.applyOptimisticUpdate(transactionId, (draft: any) => {
 				// Create or update the RoundPlayer model using nested structure
 				if (!draft.entities[playerEntityId]) {
@@ -648,16 +724,35 @@ export const useSystemCalls = () => {
 					best_time: BigInt(0)
 				}));
 				playerModel.joined = true;
+				console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Player model created/updated with joined: true`);
 			});
 
 			// Execute the transaction
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: About to execute joinRound transaction`);
 			const tx = await client.actions.joinRound(account, roundIdBigInt);
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Transaction executed successfully`);
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Transaction result:`, {
+				transactionHash: tx.transaction_hash,
+				status: tx.status,
+				result: tx.result,
+				decoded: tx.decoded
+			});
 
 			// Wait for the transaction to be processed and entities to update
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Waiting for transaction to be processed...`);
 			await new Promise(resolve => setTimeout(resolve, 1500));
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Transaction processing wait completed`);
 
 			return tx;
 		} catch (error) {
+			console.error(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Error joining round:`, error);
+			console.log(`[JoinRound] [${Date.now()}] 🔍 DEBUG: Error details:`, {
+				error: error,
+				errorMessage: error instanceof Error ? error.message : String(error),
+				errorStack: error instanceof Error ? error.stack : undefined,
+				roundId: roundId,
+				accountAddress: account.address
+			});
 			// Revert the optimistic update if an error occurs
 			state.revertOptimisticUpdate(transactionId);
 			throw error;
@@ -676,33 +771,76 @@ export const useSystemCalls = () => {
 			const transactionId = uuidv4();
 			const roundEntityId = getEntityIdFromKeys([roundId]);
 			
-			console.log(`[StartRound] Starting round ${roundId}`, {
+			console.log(`[StartRound] [${Date.now()}] Starting round ${roundId}`, {
 				roundId: roundId.toString(),
 				accountAddress: account.address
 			});
 			
+			// DEBUG: Check current round state before attempting to start
+			console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Checking round state before startRound call`);
+			console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Round entity ID:`, roundEntityId);
+			console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Full round entity:`, state.entities[roundEntityId]);
+			
+			const currentRound = getModel(state.entities[roundEntityId], 'Round');
+			console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Current round model:`, currentRound);
+			console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Current round state:`, currentRound?.state);
+			console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Round status enum values:`, {
+				WAITING: RoundStatus.WAITING,
+				IN_PROGRESS: RoundStatus.IN_PROGRESS,
+				ENDED: RoundStatus.ENDED,
+				PENDING: RoundStatus.PENDING
+			});
+			
+			if (currentRound) {
+				const currentState = Number(currentRound.state);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Current round state as number:`, currentState);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Is round in WAITING state?`, currentState === RoundStatus.WAITING);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Is round in PENDING state?`, currentState === RoundStatus.PENDING);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Is round in IN_PROGRESS state?`, currentState === RoundStatus.IN_PROGRESS);
+			}
+			
 			try {
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: About to apply optimistic update`);
 				state.applyOptimisticUpdate(transactionId, (draft: any) => {
 					const existingRound = draft.entities[roundEntityId];
 					const roundModel = getModel(existingRound, 'Round');
 					if (roundModel) {
+						console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Applying optimistic update - setting state to PENDING`);
 						roundModel.state = BigInt(RoundStatus.PENDING);
 					}
 				});
 				
-				console.log(`[StartRound] Executing start transaction for round ${roundId}`);
+				console.log(`[StartRound] [${Date.now()}] Executing start transaction for round ${roundId}`);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Calling client.actions.startRound with:`, {
+					account: account.address,
+					roundId: roundId.toString()
+				});
+				
 				const result = await client.actions.startRound(account, roundId);
 				
-				console.log(`[StartRound] Transaction sent, hash: ${result.transaction_hash}. Waiting for confirmation...`);
+				console.log(`[StartRound] [${Date.now()}] Transaction sent, hash: ${result.transaction_hash}. Waiting for confirmation...`);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Transaction result:`, {
+					transactionHash: result.transaction_hash,
+					status: result.status,
+					result: result.result,
+					decoded: result.decoded
+				});
 				
 				await account.waitForTransaction(result.transaction_hash);
 				
-				console.log(`[StartRound] Transaction confirmed. Waiting for indexer...`);
+				console.log(`[StartRound] [${Date.now()}] Transaction confirmed. Waiting for indexer...`);
 				await new Promise(resolve => setTimeout(resolve, 500)); 
 
-				console.log(`[StartRound] Successfully started round ${roundId}`);
+				console.log(`[StartRound] [${Date.now()}] Successfully started round ${roundId}`);
 			} catch (error) {
-				console.error(`[StartRound] Error starting round ${roundId}:`, error);
+				console.error(`[StartRound] [${Date.now()}] Error starting round ${roundId}:`, error);
+				console.log(`[StartRound] [${Date.now()}] 🔍 DEBUG: Error details:`, {
+					error: error,
+					errorMessage: error instanceof Error ? error.message : String(error),
+					errorStack: error instanceof Error ? error.stack : undefined,
+					roundId: roundId.toString(),
+					accountAddress: account.address
+				});
 				state.revertOptimisticUpdate(transactionId);
 				throw error;
 			} finally {
@@ -711,7 +849,9 @@ export const useSystemCalls = () => {
 		});
 	};
 
-	const nextCard = async (roundId: bigint): Promise<QuestionCard> => {
+
+
+	const nextCard = useCallback(async (roundId: bigint): Promise<QuestionCard> => {
 		if (!account) throw new Error("Account not available");
 		
 		const txKey = `nextCard-${roundId.toString()}-${account.address}`;
@@ -735,6 +875,9 @@ export const useSystemCalls = () => {
 			const preRound = getModel(state.entities[roundEntityId], 'Round');
 			console.log(`[NextCard] [${Date.now()}] Pre-transaction next_card_index:`, prePlayer ? prePlayer.next_card_index : 'N/A');
 			console.log(`[NextCard] [${Date.now()}] Pre-transaction question_cards:`, preRound ? preRound.question_cards : 'N/A');
+			
+			// Store the pre-transaction index for comparison
+			const preTransactionIndex = prePlayer ? Number(prePlayer.next_card_index) : 0;
 
 			try {
 				console.log(`[NextCard] [${Date.now()}] Executing blockchain nextCard transaction...`);
@@ -790,6 +933,18 @@ export const useSystemCalls = () => {
 
 				console.log(`[NextCard] [${Date.now()}] Updated player state:`, updatedPlayer);
 				console.log(`[NextCard] [${Date.now()}] Updated round state:`, updatedRound);
+				
+				// Check if the index actually advanced
+				const postTransactionIndex = updatedPlayer ? Number(updatedPlayer.next_card_index) : 0;
+				const indexAdvanced = postTransactionIndex !== preTransactionIndex;
+				console.log(`[NextCard] [${Date.now()}] Index advanced:`, indexAdvanced, `(${preTransactionIndex} -> ${postTransactionIndex})`);
+				
+				if (!indexAdvanced) {
+					console.log(`[NextCard] [${Date.now()}] ⚠️ WARNING: next_card_index did not advance!`);
+					console.log(`[NextCard] [${Date.now()}] This suggests the smart contract's nextCard function may not be working correctly.`);
+					console.log(`[NextCard] [${Date.now()}] Round state:`, updatedRound?.state);
+					console.log(`[NextCard] [${Date.now()}] Player joined:`, updatedPlayer?.joined);
+				}
 
 				if (!updatedPlayer) {
 					throw new Error("Player entity not found after transaction");
@@ -837,9 +992,9 @@ export const useSystemCalls = () => {
 				state.confirmTransaction(transactionId);
 			}
 		});
-	};
+	}, [account, state, client, queueTransaction]);
 
-	const submitAnswer = async (roundId: bigint, answer: Answer): Promise<boolean> => {
+	const submitAnswer = async (roundId: bigint, answer: Answer): Promise<void> => {
 		if (!account) throw new Error("Account not available");
 		
 		const txKey = `submitAnswer-${roundId.toString()}-${account.address}`;
@@ -863,9 +1018,7 @@ export const useSystemCalls = () => {
 				
 				console.log(`[SubmitAnswer] Transaction sent. Correctness will be determined by PlayerAnswer event.`);
 				
-				// The actual correctness is now handled by the useGameplaySubscriptions hook listening for the PlayerAnswer event.
-				// We return true here just to satisfy the function signature, but this return value is no longer used for correctness logic.
-				return true;
+				// No return value needed, correctness handled by events
 
 			} catch (error) {
 				console.error(`[SubmitAnswer] Error submitting answer for round ${roundId}:`, error);
@@ -1125,24 +1278,67 @@ export const useSystemCalls = () => {
 		}
 	};
 
-	return {
-		createRound,
-		joinRound,
-		startRound,
-		nextCard,
-		submitAnswer,
-		forceStartRound,
-		isRoundPlayer,
-		checkAllPlayersAnswered,
-		getPlayerProgress,
-		getCurrentCardIndex,
-		getRound,
-		getRoundPlayer,
-		addLyricsCard,
-		addBatchLyricsCard,
-		getCardCount,
-		client,
-		// Transaction state for debugging
-		pendingTransactions,
+	// Inside useSystemCalls, after other functions like getRoundPlayer
+	const getLyricsCard = async (cardId: bigint): Promise<LyricsCard | null> => {
+	  const entityId = getEntityIdFromKeys([cardId]);
+	  const entity = state.entities[entityId];
+	  const model = getModel<LyricsCard>(entity, ModelsMapping.LyricsCard as any);
+	  if (model) {
+	    return model as LyricsCard;
+	  }
+
+	  return new Promise((resolve, reject) => {
+	    let subscription: () => void;
+	    const timeout = setTimeout(() => {
+	      if (subscription) subscription();
+	      reject('Timeout fetching LyricsCard');
+	    }, 5000);
+
+	    subscription = client.subscribeEntityQuery({
+	      query: new ToriiQueryBuilder()
+	        .withClause(MemberClause(ModelsMapping.LyricsCard, "card_id", "Eq", cardId).build())
+	        .includeHashedKeys()
+	        .build(),
+	      callback: ({ data, error }: { data?: any; error?: any }) => {
+	        if (error) {
+	          clearTimeout(timeout);
+	          if (subscription) subscription();
+	          reject(error);
+	          return;
+	        }
+	        if (data) {
+	          const fetchedEntity = data[entityId];
+	          if (fetchedEntity) {
+	            const fetchedModel = getModel<LyricsCard>(fetchedEntity, ModelsMapping.LyricsCard as any);
+	            if (fetchedModel) {
+	              clearTimeout(timeout);
+	              if (subscription) subscription();
+	              resolve(fetchedModel);
+	            }
+	          }
+	        }
+	      }
+	    });
+	  });
 	};
+
+			return {
+			createRound,
+			joinRound,
+			startRound,
+			nextCard,
+			submitAnswer,
+			forceStartRound,
+			isRoundPlayer,
+			checkAllPlayersAnswered,
+			getPlayerProgress,
+			getCurrentCardIndex,
+			getRound,
+			getRoundPlayer,
+			addLyricsCard,
+			getCardCount,
+			addBatchLyricsCard,
+			getLyricsCard,
+			clearTransactionQueue,
+		};
 };

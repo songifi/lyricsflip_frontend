@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import {
   Select,
   SelectContent,
@@ -29,27 +28,10 @@ export function WagerModal() {
     wagerAmount: '',
     potentialWin: '',
   });
-  
-  const isModalOpen = isOpen && (modalType === 'single-wager' || modalType === 'multi-wager');
-  const isMultiplayer = modalType === 'multi-wager';
+  const isModalOpen = isOpen && modalType === 'wager';
+
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const startGame = useGameStore((state) => state.startGame);
-
-  // Reset stage and form when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setStage('form');
-      setWagerDetails({
-        genre: '',
-        difficulty: '',
-        duration: '',
-        odds: '',
-        wagerAmount: '',
-        potentialWin: '',
-      });
-      setFormErrors({});
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     const oddsValue = parseFloat(wagerDetails.odds);
@@ -71,7 +53,8 @@ export function WagerModal() {
     if (!wagerDetails.difficulty) errors.difficulty = 'Difficulty is required';
     if (!wagerDetails.duration) errors.duration = 'Duration is required';
     if (!wagerDetails.odds) errors.odds = 'Odds are required';
-    if (!wagerDetails.wagerAmount) errors.wagerAmount = 'Wager amount is required';
+    if (!wagerDetails.wagerAmount)
+      errors.wagerAmount = 'Wager amount is required';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -85,20 +68,18 @@ export function WagerModal() {
   };
 
   const handleStartGame = () => {
+    console.log("i am before startGame");
+    
     startGame({
       genre: wagerDetails.genre,
       difficulty: wagerDetails.difficulty,
       duration: wagerDetails.duration,
       odds: parseFloat(wagerDetails.odds),
       wagerAmount: parseFloat(wagerDetails.wagerAmount),
-      isMultiplayer: isMultiplayer
     });
 
     closeModal();
-    // Route to appropriate game page based on mode
-    router.push(isMultiplayer ? '/multiplayer' : '/single-player');
-    
-    // Reset form
+    router.push('/single-player');
     setWagerDetails({
       genre: '',
       difficulty: '',
@@ -266,10 +247,18 @@ export function WagerModal() {
     <Modal
       isOpen={isModalOpen}
       onClose={closeModal}
-      title={stage === 'form' ? `Wager (${isMultiplayer ? 'Multi' : 'Single'} Player)` : 'Wager Summary'}
-      description={stage === 'form' ? 'Configure your wager settings for the game.' : undefined}
-      primaryActionLabel={stage === 'form' ? 'Proceed to Summary' : 'Start Game'}
-      onPrimaryAction={stage === 'form' ? handleProceedToSummary : handleStartGame}
+      title={stage === 'form' ? 'Wager (Single Player)' : 'Wager Summary'}
+      description={
+        stage === 'form'
+          ? 'Quisque ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum.'
+          : undefined
+      }
+      primaryActionLabel={
+        stage === 'form' ? 'Proceed to Summary' : 'Start Game'
+      }
+      onPrimaryAction={
+        stage === 'form' ? handleProceedToSummary : handleStartGame
+      }
     >
       {stage === 'form' ? (
         renderWagerForm()

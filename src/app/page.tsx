@@ -24,6 +24,7 @@ export default function Home() {
     } else if (gameId === 'challenge') {
       openModal('challenge');
     }
+    // Add handlers for other game types as needed
   };
 
   return (

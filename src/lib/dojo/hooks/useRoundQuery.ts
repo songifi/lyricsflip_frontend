@@ -151,12 +151,15 @@ export const useRoundQuery = (): UseRoundQueryResult => {
     if (roundId) {
       if (round) {
         setIsLoading(false);
+        setError(null); // Clear any previous errors when round is found
       } else {
-        // Set a timeout to handle case where round doesn't exist
+        // Set a longer timeout to handle case where round doesn't exist
+        // This gives more time for real-time updates to arrive
         const timer = setTimeout(() => {
+          console.warn(`[useRoundQuery] Round ${roundId.toString()} not found after 10 seconds`);
           setError('Round not found');
           setIsLoading(false);
-        }, 5000);
+        }, 10000); // Increased from 5 to 10 seconds
         
         return () => clearTimeout(timer);
       }

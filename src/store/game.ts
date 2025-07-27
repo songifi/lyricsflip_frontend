@@ -7,22 +7,23 @@ interface GameState {
   currentRound: number;
   maxRounds: number;
   gameStatus: 'idle' | 'playing' | 'ended';
+  roundId: bigint | null; // Add roundId to track contract round
   gameConfig: {
     genre: string;
     difficulty: string;
     duration: string;
     odds: number;
     wagerAmount: number;
-    isMultiplayer?: boolean;
   };
   lastGuessResult: 'correct' | 'incorrect' | null;
   increaseScore: () => void;
   setGuessResult: (result: GameState['lastGuessResult']) => void;
   decreaseTime: () => void;
   resetGame: () => void;
-  startGame: (config: GameState['gameConfig']) => void;
+  startGame: (config: GameState['gameConfig'], roundId?: bigint) => void;
   endGame: () => void;
   setGameStatus: (status: GameState['gameStatus']) => void;
+  setRoundId: (roundId: bigint | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -40,6 +41,7 @@ export const useGameStore = create<GameState>((set) => ({
     wagerAmount: 0,
   },
   lastGuessResult: null,
+  roundId: null,
 
   increaseScore: () =>
     set((state) => ({
@@ -63,6 +65,7 @@ export const useGameStore = create<GameState>((set) => ({
       currentRound: 0,
       lastGuessResult: null,
       gameStatus: 'idle',
+      roundId: null,
       gameConfig: {
         genre: '',
         difficulty: '',
@@ -72,7 +75,7 @@ export const useGameStore = create<GameState>((set) => ({
       },
     }),
 
-  startGame: (config) =>
+  startGame: (config, roundId) =>
     set({
       potentialWin: config.wagerAmount * config.odds,
       timeLeft:
@@ -86,11 +89,14 @@ export const useGameStore = create<GameState>((set) => ({
       lastGuessResult: null,
       gameStatus: 'playing',
       gameConfig: config,
+      roundId: roundId || null,
     }),
 
   endGame: () => set({ gameStatus: 'ended' }),
 
   setGameStatus: (status) => set({ gameStatus: status }),
+
+  setRoundId: (roundId) => set({ roundId }),
 }));
 
 // Export startGameTimer as a separate function
