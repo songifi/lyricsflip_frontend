@@ -7,85 +7,80 @@ import { Info } from 'lucide-react';
 import { Modal } from './modal';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/game';
-
-import { KeysClause, ToriiQueryBuilder } from "@dojoengine/sdk";
-
-import { ModelsMapping } from "../../lib/dojo/typescript/models.gen";
-import { useSystemCalls } from "../../lib/dojo/useSystemCalls";
-import { useAccount } from "@starknet-react/core";
-import {
-  useDojoSDK,
-  useEntityId,
-  useEntityQuery,
-  useModel,
-} from "@dojoengine/sdk/react";
-import { addAddressPadding, CairoCustomEnum } from "starknet";
+import { useSystemCalls, GameMode } from '@/lib/dojo/useSystemCalls';
+import { useAccount } from '@starknet-react/core';
 
 export function GameModal() {
   const { isOpen, closeModal, modalType } = useModalStore();
   const [genre, setGenre] = useState<string>('');
   const [difficulty, setDifficulty] = useState<string>('');
-  const [duration, setDuration] = useState<string>('');
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
   const isModalOpen = isOpen && modalType === 'game';
+  const router = useRouter();
+  const { startGame } = useGameStore();
+  const { createRound } = useSystemCalls();
+  const { account } = useAccount();
 
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
     if (!genre) errors.genre = 'Genre is required';
     if (!difficulty) errors.difficulty = 'Difficulty is required';
-    if (!duration) errors.duration = 'Duration is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  
-  const { account, address, status } = useAccount();
-  const { useDojoStore, client } = useDojoSDK();
-  const entities = useDojoStore((state) => state.entities);
-  const { createRound } = useSystemCalls();
 
+  const handleStartGame = async () => {
+    if (!validateForm()) return;
+    if (!account?.address) {
+      setFormErrors({ account: 'Please connect your wallet to start a game' });
+      return;
+    }
 
-  const GENRE_ENUM_MAP: Record<string, string> = {
-    pop: "Pop",
-    rock: "Rock",
-    hiphop: "HipHop",
-    rnb: "Rnb",
+    setIsLoading(true);
+    setFormErrors({});
+
+    try {
+      console.log('[GameModal] Starting solo game with params:', {
+        genre,
+        difficulty
+      });
+
+      // Create a solo round (no wager, no multiplayer)
+      const roundId = await createRound(GameMode.Solo);
+      
+      console.log('[GameModal] Solo round created with ID:', roundId.toString());
+
+      // Update game store with the game configuration
+      startGame({
+        genre,
+        difficulty,
+        duration: '5 mins', // Default duration
+        odds: 3, // Default odds for quick game
+        wagerAmount: 0, // No wager for quick game
+      }, roundId);
+
+      closeModal();
+      router.push('/single-player');
+      
+    } catch (error) {
+      console.error('[GameModal] Failed to create solo round:', error);
+      setFormErrors({ 
+        submit: error instanceof Error ? error.message : 'Failed to start game. Please try again.' 
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-
-    const handleStartGame = async () => {
-      if (!validateForm()) return;
-    
-      try {
-        const cairoVariant = GENRE_ENUM_MAP[genre];
-        const genreEnum = new CairoCustomEnum({ [cairoVariant]: {} });
-
-        await createRound(genreEnum);
-    
-        // Update game store (local state)
-        startGame({
-          genre,
-          difficulty,
-          duration,
-          odds: 3,
-          wagerAmount: 0,
-          isMultiplayer: false,
-        });
-    
-        closeModal();
-        router.push("/quick-game");
-      } catch (err) {
-        console.error("Failed to create round:", err);
-        // Optionally show UI error feedback here
-      }
-    };
-    
 
   return (
     <Modal
       isOpen={isModalOpen}
       onClose={closeModal}
       title="Quick Game"
-      description="Quisque ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum."
-      primaryActionLabel="Start Game"
+      description="Start a solo game to test your music knowledge!"
+      primaryActionLabel={isLoading ? "Starting..." : "Start Game"}
+      onPrimaryAction={handleStartGame}
     >
       <div className="grid gap-6">
         <div className="grid gap-2">
@@ -93,7 +88,7 @@ export function GameModal() {
             Genre
           </label>
           <Select value={genre} onValueChange={setGenre}>
-            <SelectTrigger>
+            <SelectTrigger className={formErrors.genre ? 'border-red-500' : ''}>
               <SelectValue placeholder="Select genre" />
             </SelectTrigger>
             <SelectContent>
@@ -103,6 +98,9 @@ export function GameModal() {
               <SelectItem value="rnb">R&B</SelectItem>
             </SelectContent>
           </Select>
+          {formErrors.genre && (
+            <p className="text-red-500 text-xs">{formErrors.genre}</p>
+          )}
         </div>
 
         <div className="grid gap-2">
@@ -110,7 +108,7 @@ export function GameModal() {
             Difficulty Level
           </label>
           <Select value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger>
+            <SelectTrigger className={formErrors.difficulty ? 'border-red-500' : ''}>
               <SelectValue placeholder="Select difficulty" />
             </SelectTrigger>
             <SelectContent>
@@ -119,23 +117,24 @@ export function GameModal() {
               <SelectItem value="hard">Hard</SelectItem>
             </SelectContent>
           </Select>
+          {formErrors.difficulty && (
+            <p className="text-red-500 text-xs">{formErrors.difficulty}</p>
+          )}
         </div>
 
-        <div className="grid gap-2">
-          <label htmlFor="duration" className="text-sm font-medium">
-            Duration
-          </label>
-          <Select value={duration} onValueChange={setDuration}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select duration" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5min">5 minutes</SelectItem>
-              <SelectItem value="10min">10 minutes</SelectItem>
-              <SelectItem value="15min">15 minutes</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+
+
+        {formErrors.account && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {formErrors.account}
+          </div>
+        )}
+
+        {formErrors.submit && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {formErrors.submit}
+          </div>
+        )}
 
         <div className="bg-purple-50 p-4 rounded-lg flex gap-3">
           <div className="bg-purple-100 rounded-full p-1 h-6 w-6 flex items-center justify-center flex-shrink-0">

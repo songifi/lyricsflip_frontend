@@ -30,6 +30,8 @@ export default function MultiplayerPage() {
   // Convert to BigInt if we have a roundId
   const roundIdBigInt = roundId ? BigInt(roundId) : null;
   
+  // Removed excessive debug logging
+  
   // Use contract-based multiplayer game instead of mock
   const {
     gamePhase,
@@ -46,7 +48,9 @@ export default function MultiplayerPage() {
     isLoading,
     error,
     lastAnswerCorrectness,
-    isGameComplete
+    isGameComplete,
+    isEventSubscribed,
+    playerAnswerEvents
   } = useMultiplayerGame(roundIdBigInt!);
 
   // Local state for UI
@@ -67,12 +71,7 @@ export default function MultiplayerPage() {
     const roundState = round?.state ? Number(BigInt(round.state)) : null;
     const roundStateText = round?.state ? mapRoundStateToEnum(round.state) : 'UNKNOWN';
     
-    console.log('[MultiplayerPage] Checking auto-start conditions:', {
-      roundState,
-      roundStateText,
-      gamePhase,
-      shouldStart: (roundState === 1 || roundState === 3) && gamePhase === 'starting'
-    });
+    // Removed excessive debug logging
     
     // Try to get first card if round is IN_PROGRESS (1) or PENDING (3)
     if ((roundState === 1 || roundState === 3) && gamePhase === 'starting') {
@@ -99,16 +98,20 @@ export default function MultiplayerPage() {
     try {
       await submitAnswer(index as Answer);
       
-      // Reset selection after delay
-      setTimeout(() => {
-        setSelectedOption(null);
-      }, 3000);
+      // Reset selection when game state resets (handled by useEffect below)
       
     } catch (err) {
       console.error('[MultiplayerPage] Failed to submit answer:', err);
       setSelectedOption(null);
     }
   };
+
+  // Reset selectedOption when game state resets to new card
+  useEffect(() => {
+    if (gamePhase === 'card_active' && canAnswer) {
+      setSelectedOption(null);
+    }
+  }, [gamePhase, canAnswer]);
 
   // Extract options from the current card
   const songOptions: SongOption[] = currentCard ? [
@@ -118,21 +121,8 @@ export default function MultiplayerPage() {
     parseQuestionCardOption(currentCard.option_four),
   ] : [];
 
-  // Determine correct option based on game state
-  const getCorrectOption = (): SongOption | null => {
-    if (!currentCard || lastAnswerCorrectness === null || selectedOption === null) {
-      return null;
-    }
-    
-    // If the last answer was correct, the selected option is the correct one
-    if (lastAnswerCorrectness) {
-      return songOptions[selectedOption] || null;
-    }
-    
-    // If the answer was wrong, we don't know which one was correct
-    // The contract doesn't tell us the correct answer, only if ours was right
-    return null;
-  };
+  // Determine correct option based on game state - simplified for immediate feedback
+  // Removed getCorrectOption - now using simple isCorrect boolean
 
   // Handle loading state
   if (!roundIdBigInt) {
@@ -225,6 +215,18 @@ export default function MultiplayerPage() {
         <p className="text-gray-600 text-sm">
           Round ID: {roundIdBigInt.toString()} | Players: {playersCount} | Score: {myScore}
         </p>
+        {/* 🚀 NEW: Event subscription status indicator */}
+        <div className="flex items-center gap-2 mt-2 text-xs">
+          <div className={`w-2 h-2 rounded-full ${isEventSubscribed ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className={isEventSubscribed ? 'text-green-600' : 'text-red-600'}>
+            {isEventSubscribed ? 'Real-time updates connected' : 'Real-time updates disconnected'}
+          </span>
+          {playerAnswerEvents.length > 0 && (
+            <span className="text-blue-600">
+              | Events: {playerAnswerEvents.length}
+            </span>
+          )}
+        </div>
         {(gamePhase === 'starting' || gamePhase === 'waiting') && (
           <button
             onClick={() => {
@@ -282,6 +284,30 @@ export default function MultiplayerPage() {
               <p className="text-xs text-gray-600">Waiting for results...</p>
             </div>
           )}
+          
+          {/* 🚀 NEW: Answer feedback indicator */}
+          {lastAnswerCorrectness !== null && (
+            <div className={`mt-4 p-4 rounded-lg border ${
+              lastAnswerCorrectness 
+                ? 'bg-green-50 border-green-200 text-green-800' 
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                <div className={`w-4 h-4 rounded-full ${
+                  lastAnswerCorrectness ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <p className="text-sm font-medium">
+                  {lastAnswerCorrectness ? 'Correct!' : 'Incorrect'}
+                </p>
+              </div>
+              <p className="text-xs mt-1">
+                {lastAnswerCorrectness 
+                  ? `+10 points! Total: ${myScore}` 
+                  : 'Better luck next time!'
+                }
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -290,14 +316,8 @@ export default function MultiplayerPage() {
           options={songOptions}
           onSelect={handleSongSelect}
           selectedOption={selectedOption !== null ? songOptions[selectedOption] : null}
-          correctOption={getCorrectOption()}
+          isCorrect={lastAnswerCorrectness}
         />
-      )}
-
-      {!canAnswer && gamePhase === 'card_active' && (
-        <div className="mt-4 p-4 rounded-lg bg-gray-50 border border-gray-200 text-center">
-          <p className="text-sm text-gray-600">Answer submitted. Waiting for next card...</p>
-        </div>
       )}
 
       {!canAnswer && gamePhase === 'card_active' && (

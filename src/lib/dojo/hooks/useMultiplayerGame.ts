@@ -3,7 +3,10 @@ import { useSystemCalls, Answer } from '../useSystemCalls';
 import { useRoundQuery } from './useRoundQuery';
 import { useAccount } from '@starknet-react/core';
 import type { QuestionCard, Round, RoundPlayer } from '../typescript/models.gen';
+import { parseLyricsCard, parseQuestionCardOption } from '../useSystemCalls';
+import type { LyricsCard } from '../typescript/models.gen';
 import { useGameplaySubscriptions } from './useGameplaySubscriptions';
+import { addAddressPadding } from 'starknet';
 
 type GamePhase = 'waiting' | 'starting' | 'card_active' | 'card_results' | 'completed' | 'loading_card';
 
@@ -46,12 +49,15 @@ interface UseMultiplayerGameResult {
   // Loading States
   isLoading: boolean;
   error: string | null;
+  
+  // 🚀 NEW: Event subscription status
+  isEventSubscribed: boolean;
+  playerAnswerEvents: any[];
 }
 
 export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult => {
   const { account } = useAccount();
-  const { nextCard, submitAnswer: submitAnswerCall, getPlayerProgress, getCardCount, checkAllPlayersAnswered } = useSystemCalls();
-  const { subscribeToGameplay, unsubscribeFromGameplay, subscriptionError } = useGameplaySubscriptions();
+  const { nextCard, submitAnswer: submitAnswerCall, getPlayerProgress, getCardCount, checkAllPlayersAnswered, getLyricsCard } = useSystemCalls();
   
   // CRITICAL: Add refs to prevent excessive submissions and manage state
   const submitInProgressRef = useRef<boolean>(false);
@@ -59,6 +65,34 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
   const lastSubmissionTime = useRef<number>(0);
   const gameStateRef = useRef<GameState | null>(null);
   const handleSubmitAnswerRef = useRef<((answer: Answer) => Promise<void>) | null>(null);
+  const roundQueryInitialized = useRef<boolean>(false);
+  const getLyricsCardRef = useRef<typeof getLyricsCard | null>(null);
+  
+  // 🚀 NEW: Event subscription system
+  const {
+    subscribeToGameplay,
+    unsubscribeFromGameplay,
+    isSubscribed: isEventSubscribed,
+    subscriptionError: eventSubscriptionError,
+    events: playerAnswerEvents,
+    latestEvent: latestPlayerAnswerEvent,
+    roundWinnerEvents,
+    latestRoundWinnerEvent
+  } = useGameplaySubscriptions();
+  
+  // Store the subscription functions in refs to avoid dependency issues
+  useEffect(() => {
+    getLyricsCardRef.current = getLyricsCard;
+  }, [getLyricsCard]);
+  
+  // Cleanup function to clear timer
+  const clearGameTimer = useCallback(() => {
+    if (timerRef.current) {
+      console.log('[useMultiplayerGame] Clearing game timer');
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
   
   // Use existing round query system
   const { round, playersCount, isLoading: roundLoading, error: roundError, queryRound } = useRoundQuery();
@@ -85,69 +119,139 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
   const [myPlayerData, setMyPlayerData] = useState<RoundPlayer | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Propagate subscription errors to the main error state
+  // 🚀 NEW: Subscribe to gameplay events when round is active
   useEffect(() => {
-    if (subscriptionError) {
-      setError(prevError => {
-        const newError = `Real-time connection failed: ${subscriptionError}`;
-        // Avoid duplicate error messages
-        if (prevError?.includes(newError)) {
-          return prevError;
-        }
-        return prevError ? `${prevError}; ${newError}` : newError;
-      });
+    if (!roundId || !account?.address) {
+      console.log('[useMultiplayerGame] Skipping event subscription - missing roundId or account');
+      return;
     }
-  }, [subscriptionError]);
 
-  // Gameplay subscriptions
-  useEffect(() => {
-    if (roundId && account?.address) {
-      console.log('[useMultiplayerGame] Subscribing to gameplay events for round:', roundId.toString());
-      
-      subscribeToGameplay(roundId, {
-        onPlayerStateChange: (playerData) => {
-          // Check if the update is for the current player
-          if (playerData.player_to_round_id && BigInt(playerData.player_to_round_id[0]) === BigInt(account.address)) {
-            console.log('[useMultiplayerGame] Received real-time player state update:', playerData);
-            setMyPlayerData(playerData as RoundPlayer);
-            setGameState(prev => ({
-              ...prev,
-              myScore: Number(playerData.total_score),
-              correctAnswers: Number(playerData.correct_answers),
-              totalAnswers: Number(playerData.total_answers),
-            }));
+    const setupEventSubscriptions = async () => {
+      try {
+        console.log('[useMultiplayerGame] Setting up event subscriptions for round:', roundId.toString());
+        console.log('[useMultiplayerGame] Account address:', account.address);
+        
+        await subscribeToGameplay(roundId, {
+          onPlayerAnswer: (answerData) => {
+            console.log('[useMultiplayerGame] 🎯 PlayerAnswer event received:', answerData);
+            
+            // Only process events for the current player (with address padding)
+            const paddedEventPlayer = addAddressPadding(answerData.player);
+            const paddedAccountAddress = addAddressPadding(account?.address || '');
+            const isMatch = paddedEventPlayer === paddedAccountAddress;
+            
+            console.log('[useMultiplayerGame] Address comparison:', {
+              eventPlayer: answerData.player,
+              paddedEventPlayer,
+              accountAddress: account?.address,
+              paddedAccountAddress,
+              isMatch
+            });
+            
+            if (isMatch) {
+              // Update correctness feedback
+              setGameState(prev => ({
+                ...prev,
+                lastAnswerCorrectness: answerData.is_correct
+              }));
+              
+              // Update scores based on correctness
+              if (answerData.is_correct) {
+                setGameState(prev => ({
+                  ...prev,
+                  correctAnswers: prev.correctAnswers + 1,
+                  myScore: prev.myScore + 10 // Add points for correct answer
+                }));
+              }
+              
+              // Update total answers
+              setGameState(prev => ({
+                ...prev,
+                totalAnswers: prev.totalAnswers + 1
+              }));
+              
+              console.log('[useMultiplayerGame] ✅ Updated game state from PlayerAnswer event:', {
+                isCorrect: answerData.is_correct,
+                newScore: gameState.myScore + (answerData.is_correct ? 10 : 0),
+                correctAnswers: gameState.correctAnswers + (answerData.is_correct ? 1 : 0),
+                totalAnswers: gameState.totalAnswers + 1
+              });
+            }
+          },
+          onRoundWinner: (winnerData) => {
+            console.log('[useMultiplayerGame] 🏆 RoundWinner event received:', winnerData);
+            
+            // Check if current player is the winner
+            if (winnerData.winner === account?.address) {
+              console.log('[useMultiplayerGame] 🎉 Current player is the winner!');
+              // Could add special UI feedback here
+            }
+            
+            // Mark game as completed
+            setGameState(prev => ({ ...prev, phase: 'completed' }));
+            clearGameTimer();
           }
-        },
-      });
-    }
-
-    return () => {
-      if (roundId) {
-        console.log('[useMultiplayerGame] Unsubscribing from gameplay events for round:', roundId.toString());
-        unsubscribeFromGameplay();
+        });
+        
+        console.log('[useMultiplayerGame] ✅ Event subscriptions set up successfully');
+      } catch (error) {
+        console.error('[useMultiplayerGame] ❌ Failed to set up event subscriptions:', error);
+        setError('Failed to set up real-time game updates');
       }
     };
-  }, [roundId, account?.address, subscribeToGameplay, unsubscribeFromGameplay]);
 
-  // Cleanup function to clear timer
-  const clearGameTimer = useCallback(() => {
-    if (timerRef.current) {
-      console.log('[useMultiplayerGame] Clearing game timer');
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
+    setupEventSubscriptions();
 
-  // Initialize round query
+    // Cleanup subscriptions when component unmounts or roundId changes
+    return () => {
+      console.log('[useMultiplayerGame] Cleaning up event subscriptions');
+      unsubscribeFromGameplay();
+    };
+  }, [roundId, account?.address]); // Remove unstable function dependencies
+
+  // 🚀 NEW: Check for game completion when all cards are answered
   useEffect(() => {
-    if (roundId && account?.address) {
+    if (!roundId || !account?.address) return;
+
+    const checkGameCompletion = async () => {
+      try {
+        // Check if all players have answered all cards
+        const allPlayersAnswered = await checkAllPlayersAnswered(roundId);
+        
+        if (allPlayersAnswered) {
+          console.log('[useMultiplayerGame] 🏁 All players have answered all cards - game complete!');
+          setGameState(prev => ({ ...prev, phase: 'completed' }));
+          clearGameTimer(); // Ensure timer is cleared
+        }
+      } catch (error) {
+        console.error('[useMultiplayerGame] Error checking game completion:', error);
+      }
+    };
+
+    // Check completion when we receive a PlayerAnswer event
+    if (latestPlayerAnswerEvent) {
+      checkGameCompletion();
+    }
+  }, [roundId, account?.address, latestPlayerAnswerEvent]); // Remove unstable dependencies
+
+  // Initialize round query - only once per roundId
+  useEffect(() => {
+    if (roundId && account?.address && !roundQueryInitialized.current) {
       queryRound(roundId);
+      roundQueryInitialized.current = true;
       
       // Log initial setup (only once per roundId)
       console.log('[useMultiplayerGame] Initializing for round:', roundId.toString());
       console.log('[useMultiplayerGame] Account:', account?.address || 'Not connected');
     }
-  }, [roundId, account?.address]);
+    
+    // Reset flag when roundId changes
+    return () => {
+      if (roundQueryInitialized.current) {
+        roundQueryInitialized.current = false;
+      }
+    };
+  }, [roundId, account?.address]); // Remove queryRound from dependencies
 
   // Check card count and database verification (run only once per round)
   useEffect(() => {
@@ -187,7 +291,7 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
       setGameState(prev => ({ ...prev, phase: 'completed' }));
       clearGameTimer(); // Ensure timer is cleared on completion
     }
-  }, [round?.state, clearGameTimer]);
+  }, [round?.state]); // Remove clearGameTimer from dependencies
 
   // Fetch initial player progress ONCE
   useEffect(() => {
@@ -264,7 +368,7 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
     }
   }, [roundId, nextCard]);
 
-  // IMPROVED: Properly sequenced answer submission
+  // 🚀 UPDATED: Answer submission with event-based feedback
   const handleSubmitAnswer = useCallback(async (answer: Answer) => {
     if (!roundId) {
       setError('No round ID available');
@@ -306,80 +410,23 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
       // Clear timer immediately to prevent auto-submit
       clearGameTimer();
       
+      // Submit answer - correctness will come from PlayerAnswer event
+      await submitAnswerCall(roundId, answer);
+
+      // Update state to show submission - correctness will be set by event
       setGameState(prev => ({ 
         ...prev, 
         hasAnswered: true, 
         lastAnswer: answer,
+        lastAnswerCorrectness: null, // Will be updated by PlayerAnswer event
         phase: 'card_results'
       }));
       
-      // STEP 1: Submit answer and wait for completion
-      const isCorrect = await submitAnswerCall(roundId, answer);
-      console.log('[useMultiplayerGame] Answer result:', isCorrect);
+      console.log('[useMultiplayerGame] ✅ Answer submitted, waiting for PlayerAnswer event...');
       
-      // Store the correctness result
-      setGameState(prev => ({
-        ...prev,
-        lastAnswerCorrectness: isCorrect
-      }));
-      
-      // STEP 2: Wait for all players to answer (multiplayer logic)
-      let allPlayersReady = false;
-      let waitAttempts = 0;
-      const maxWaitAttempts = 10; // 5 seconds max wait
-      
-      while (!allPlayersReady && waitAttempts < maxWaitAttempts) {
-        try {
-          allPlayersReady = await checkAllPlayersAnswered(roundId);
-          if (!allPlayersReady) {
-            console.log('[useMultiplayerGame] Waiting for other players to answer...');
-            await new Promise(resolve => setTimeout(resolve, 500));
-            waitAttempts++;
-          }
-        } catch (err) {
-          console.warn('[useMultiplayerGame] Error checking players, proceeding:', err);
-          break;
-        }
-      }
-      
-      if (allPlayersReady) {
-        console.log('[useMultiplayerGame] All players ready, getting next card');
-      } else {
-        console.log('[useMultiplayerGame] Timeout waiting for players, proceeding anyway');
-      }
-      
-      // STEP 3: Get next card (only after answer submission is complete)
-      try {
-        const nextCardData = await nextCard(roundId);
-        
-        setGameState(prev => ({
-          ...prev,
-          currentCard: nextCardData,
-          phase: 'card_active',
-          hasAnswered: false,
-          lastAnswer: null,
-          lastAnswerCorrectness: null,
-          cardStartTime: Date.now(),
-          timeRemaining: 30
-        }));
-        
-        console.log('[useMultiplayerGame] Successfully advanced to next card');
-      } catch (cardError) {
-        console.error('[useMultiplayerGame] Failed to get next card:', cardError);
-        // Handle end of game or other errors
-        if (cardError instanceof Error && cardError.message.includes('No question card found')) {
-          setGameState(prev => ({ ...prev, phase: 'completed' }));
-        } else {
-          setError(cardError instanceof Error ? cardError.message : 'Failed to get next card');
-          setGameState(prev => ({ 
-            ...prev, 
-            hasAnswered: false, 
-            lastAnswer: null,
-            lastAnswerCorrectness: null,
-            phase: 'card_active'
-          }));
-        }
-      }
+      // 🚀 NEW: Wait for PlayerAnswer event instead of auto-advancing
+      // The event will trigger the callback and update correctness
+      // We'll let the event system handle the next card progression
       
     } catch (err) {
       console.error('[useMultiplayerGame] Failed to submit answer:', err);
@@ -394,12 +441,57 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
     } finally {
       submitInProgressRef.current = false;
     }
-  }, [roundId, submitAnswerCall, gameState.hasAnswered, gameState.phase, clearGameTimer, nextCard, checkAllPlayersAnswered]);
+  }, [roundId, submitAnswerCall, gameState.hasAnswered, gameState.phase, clearGameTimer]);
+
+  // 🚀 NEW: Auto-advance to next card after showing feedback
+  useEffect(() => {
+    if (gameState.lastAnswerCorrectness !== null && gameState.hasAnswered) {
+      console.log('[useMultiplayerGame] 🎯 Showing feedback for:', gameState.lastAnswerCorrectness ? 'correct' : 'incorrect');
+      
+      // Show feedback for 2 seconds, then advance to next card
+      const feedbackTimer = setTimeout(async () => {
+        try {
+          console.log('[useMultiplayerGame] 🚀 Advancing to next card after feedback...');
+          const nextCardData = await nextCard(roundId);
+          
+          setGameState(prev => ({
+            ...prev,
+            currentCard: nextCardData,
+            phase: 'card_active',
+            hasAnswered: false,
+            lastAnswer: null,
+            lastAnswerCorrectness: null,
+            cardStartTime: Date.now(),
+            timeRemaining: 30
+          }));
+          
+          console.log('[useMultiplayerGame] ✅ Successfully advanced to next card');
+        } catch (cardError) {
+          console.error('[useMultiplayerGame] Failed to get next card:', cardError);
+          // Handle end of game or other errors
+          if (cardError instanceof Error && cardError.message.includes('No question card found')) {
+            setGameState(prev => ({ ...prev, phase: 'completed' }));
+          } else {
+            setError(cardError instanceof Error ? cardError.message : 'Failed to get next card');
+            setGameState(prev => ({ 
+              ...prev, 
+              hasAnswered: false, 
+              lastAnswer: null,
+              lastAnswerCorrectness: null,
+              phase: 'card_active'
+            }));
+          }
+        }
+      }, 2000);
+      
+      return () => clearTimeout(feedbackTimer);
+    }
+  }, [gameState.lastAnswerCorrectness, gameState.hasAnswered, roundId]); // Remove nextCard from dependencies
 
   // Store handleSubmitAnswer in ref to prevent timer effect from recreating
   useEffect(() => {
     handleSubmitAnswerRef.current = handleSubmitAnswer;
-  }, [handleSubmitAnswer]);
+  }, []); // Remove handleSubmitAnswer from dependencies to prevent re-renders
 
   // Timer management - optimized to reduce re-renders
   useEffect(() => {
@@ -411,7 +503,8 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
       return;
     }
     
-    console.log('[useMultiplayerGame] Starting NEW timer for card:', gameState.currentCard.lyric?.substring(0, 50));
+    const cardId = gameState.currentCard.lyric; // Use lyric as unique identifier
+    console.log('[useMultiplayerGame] Starting NEW timer for card:', cardId?.substring(0, 50));
     
     timerRef.current = setInterval(() => {
       const currentState = gameStateRef.current;
@@ -447,15 +540,16 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
 
     // Cleanup function
     return clearGameTimer;
-  }, [gameState.phase, gameState.hasAnswered, gameState.currentCard?.lyric]); // Removed volatile dependencies
+  }, [gameState.phase, gameState.hasAnswered, gameState.currentCard?.lyric]); // Remove clearGameTimer from dependencies
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearGameTimer();
       submitInProgressRef.current = false;
+      unsubscribeFromGameplay(); // Ensure event subscriptions are cleaned up
     };
-  }, [clearGameTimer]);
+  }, []); // Empty dependency array for cleanup effect
 
   return {
     // Game State
@@ -482,6 +576,10 @@ export const useMultiplayerGame = (roundId: bigint): UseMultiplayerGameResult =>
     
     // Loading States
     isLoading: roundLoading || gameState.phase === 'loading_card',
-    error: error || roundError,
+    error: error || roundError || eventSubscriptionError,
+    
+    // 🚀 NEW: Event subscription status
+    isEventSubscribed,
+    playerAnswerEvents
   };
 }; 

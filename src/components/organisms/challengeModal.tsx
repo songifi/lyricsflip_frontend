@@ -56,6 +56,8 @@ export const ChallengeModal = () => {
   const [code, setCode] = useState('');
   const [modalStep, setModalStep] = useState<'join' | 'details'>('join');
   const [joinedRoundId, setJoinedRoundId] = useState<bigint | null>(null);
+  const [isWaitingForRoundData, setIsWaitingForRoundData] = useState(false);
+  const [roundDataError, setRoundDataError] = useState<string | null>(null);
 
   const {
     joinRound,
@@ -67,12 +69,40 @@ export const ChallengeModal = () => {
     validation
   } = useJoinRound();
 
-  const isLoading = isJoining;
-  const displayError = joinError;
+  // Add round query to check if round data is available
+  const { round: availableRound } = useRoundActivation({ roundId: joinedRoundId });
+
+  const isLoading = isJoining || isWaitingForRoundData;
+  const displayError = joinError || roundDataError;
 
   useEffect(() => {
     resetJoinRoundState();
+    setRoundDataError(null);
+    setIsWaitingForRoundData(false);
   }, [resetJoinRoundState]);
+
+  // Wait for round data to be available after joining
+  useEffect(() => {
+    if (isWaitingForRoundData && joinedRoundId && availableRound) {
+      console.log('[ChallengeModal] Round data is now available, switching to details view');
+      setIsWaitingForRoundData(false);
+      setRoundDataError(null);
+      setModalStep('details');
+    }
+  }, [isWaitingForRoundData, joinedRoundId, availableRound]);
+
+  // Timeout for waiting for round data
+  useEffect(() => {
+    if (isWaitingForRoundData) {
+      const timeout = setTimeout(() => {
+        console.error('[ChallengeModal] Timeout waiting for round data');
+        setIsWaitingForRoundData(false);
+        setRoundDataError('Failed to load round data. Please try again.');
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isWaitingForRoundData]);
 
   const handleCodeChange = (value: string) => {
     const newCode = value.trim();
@@ -91,6 +121,9 @@ export const ChallengeModal = () => {
         return;
     }
 
+    // Clear any previous errors
+    setRoundDataError(null);
+
     try {
       let roundIdToJoin: bigint;
       try {
@@ -103,8 +136,12 @@ export const ChallengeModal = () => {
 
       console.log('[ChallengeModal] Attempting to directly join round:', roundIdToJoin.toString());
       await joinRound(roundIdToJoin);
+      
+      // Set the round ID and start waiting for round data
       setJoinedRoundId(roundIdToJoin);
-      setModalStep('details');
+      setIsWaitingForRoundData(true);
+      console.log('[ChallengeModal] Join successful, waiting for round data to be available...');
+      
     } catch (error) {
       console.error('[ChallengeModal] Failed to join round from direct attempt (error caught in component):', error);
     }
@@ -157,10 +194,15 @@ export const ChallengeModal = () => {
               onClick={handleDirectJoin} 
               disabled={isLoading || !code || !validation?.isValid || !!joinError}
             >
-              {isLoading ? (
+              {isJoining ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Joining...
+                </>
+              ) : isWaitingForRoundData ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading round data...
                 </>
               ) : (
                 'Join Challenge'
