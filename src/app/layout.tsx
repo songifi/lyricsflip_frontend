@@ -6,6 +6,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
 import { Toaster } from 'sonner';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import './globals.css';
 
 const geistSans = Geist({
@@ -29,6 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [isClient, setIsClient] = useState(false);
+  const pathname = usePathname();
+  const hideChrome = pathname === '/sign-in-page';
 
   useEffect(() => {
     setIsClient(true);
@@ -42,9 +45,9 @@ export default function RootLayout({
       >
         {isClient && (
           <ClientProvider>
-            <Navbar />
+            {!hideChrome && <Navbar />}
             {children}
-            <MobileNav />
+            {!hideChrome && <MobileNav />}
             <Toaster 
               position="top-center"
               expand={false}
