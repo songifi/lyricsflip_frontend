@@ -11,9 +11,14 @@ import {
   Connector 
 } from "@starknet-react/core";
 import { dojoConfig } from "./dojoConfig";
+import { usePathname } from "next/navigation";
 import { usePredeployedAccounts } from "@dojoengine/predeployed-connector/react";
 import ControllerConnector from "@cartridge/connector/controller";
 import { getWalletConfig, getCartridgePolicies, getCartridgeChains, CHAIN_IDS } from "./config";
+import { Chain } from "starknet";
+
+// Lazily create ControllerConnector on the client to avoid SSR window usage
+let clientCartridgeConnector: ControllerConnector | null = null;
 
 export default function StarknetProvider({ children }: PropsWithChildren) {
   const walletConfig = getWalletConfig();
@@ -25,24 +30,38 @@ export default function StarknetProvider({ children }: PropsWithChildren) {
     name: "Katana",
   });
 
-  // Cartridge Controller connector
-  const cartridgeConnector = new ControllerConnector({
-    policies: getCartridgePolicies(dojoConfig.manifest.world.address),
-    defaultChainId: CHAIN_IDS.SEPOLIA, // Default to Sepolia for development
-    chains: getCartridgeChains(),
-  });
-
   // Choose connectors based on environment
-  const connectors = walletConfig.useKatanaAccounts 
-    ? katanaConnectors 
-    : [cartridgeConnector as never as Connector];
+  let connectors: Connector[] = [] as unknown as Connector[];
+  if (walletConfig.useKatanaAccounts) {
+    connectors = katanaConnectors as unknown as Connector[];
+  } else {
+    if (typeof window !== 'undefined') {
+      if (!clientCartridgeConnector) {
+        clientCartridgeConnector = new ControllerConnector({
+          policies: getCartridgePolicies(dojoConfig.manifest.world.address),
+          defaultChainId: CHAIN_IDS.SEPOLIA,
+          chains: getCartridgeChains(),
+        });
+      }
+      connectors = [clientCartridgeConnector as unknown as Connector];
+    }
+  }
 
   const provider = jsonRpcProvider({
-    rpc: () => ({ nodeUrl: dojoConfig.rpcUrl as string }),
+    rpc: (chain: Chain) => {
+      // Use Katana RPC only in Katana mode; otherwise Cartridge RPC per chain
+      if (walletConfig.useKatanaAccounts) {
+        return { nodeUrl: dojoConfig.rpcUrl as string };
+      }
+      if (chain.id === mainnet.id) {
+        return { nodeUrl: "https://api.cartridge.gg/x/starknet/mainnet" };
+      }
+      return { nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia" };
+    },
   });
 
   // Choose appropriate chain based on environment
-  const chains = walletConfig.useKatanaAccounts ? [mainnet] : [sepolia, mainnet];
+  const chains = walletConfig.useKatanaAccounts ? [sepolia] : [sepolia, mainnet];
 
   return (
     <StarknetConfig
@@ -65,6 +84,12 @@ function StarknetConnectionWrapper({
 }: PropsWithChildren & { walletConfig: ReturnType<typeof getWalletConfig> }) {
   const { account, status } = useAccount();
   const { connect, connectors } = useConnect();
+  const pathname = usePathname();
+
+  // Do not gate the dedicated sign-in page
+  if (pathname === "/sign-in-page") {
+    return <>{children}</>;
+  }
 
   if (!account) {
     return (
