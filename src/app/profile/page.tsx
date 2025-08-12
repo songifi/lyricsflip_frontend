@@ -1,0 +1,113 @@
+"use client";
+
+import { Card } from "@/components/molecules/card";
+import { Button } from "@/components/atoms/button";
+import { User, Trophy, ThumbsDown, Target } from "lucide-react";
+
+export default function ProfilePage() {
+  const username = "PlayerOne";
+  const wins = 42;
+  const losses = 17;
+  const total = wins + losses;
+  const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+
+  return (
+    <main className="lg:max-w-[53rem] mx-auto w-full mb-20 lg:mb-12 p-4 lg:p-0 md:mt-24 lg:mt-32">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-purple-100 text-purple-700">
+          <User className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold">Profile</h1>
+          <p className="text-sm text-[#909090]">
+            Your player information and stats
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        {/* Hero */}
+        <Card variant="default">
+          <div className="relative overflow-hidden rounded-lg">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 opacity-90" />
+            <div className="relative z-10 flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-white ring-2 ring-white/30 backdrop-blur">
+                  <User className="h-8 w-8" />
+                </div>
+                <div className="text-white">
+                  <p className="text-xs/5 opacity-90">Username</p>
+                  <p className="text-2xl font-semibold">{username}</p>
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-3">
+                <div className="rounded-full bg-white/20 px-3 py-1 text-white text-xs backdrop-blur">
+                  Pro Player
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <Card variant="purple">
+            <div className="p-1 rounded-lg bg-gradient-to-r from-purple-200 to-purple-100">
+              <div className="rounded-md bg-white p-4">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Trophy className="h-4 w-4" />
+                  <span className="text-xs font-medium">Wins</span>
+                </div>
+                <p className="mt-2 text-3xl font-bold text-gray-900">{wins}</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="purple">
+            <div className="p-1 rounded-lg bg-gradient-to-r from-pink-200 to-pink-100">
+              <div className="rounded-md bg-white p-4">
+                <div className="flex items-center gap-2 text-red-600">
+                  <ThumbsDown className="h-4 w-4" />
+                  <span className="text-xs font-medium">Losses</span>
+                </div>
+                <p className="mt-2 text-3xl font-bold text-gray-900">
+                  {losses}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="purple">
+            <div className="p-1 rounded-lg bg-gradient-to-r from-blue-200 to-blue-100">
+              <div className="rounded-md bg-white p-4">
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Target className="h-4 w-4" />
+                  <span className="text-xs font-medium">Win Rate</span>
+                </div>
+                <div className="mt-2 flex items-end justify-between">
+                  <p className="text-3xl font-bold text-gray-900">{winRate}%</p>
+                </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${winRate}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Optional actions (non-functional) */}
+      <div className="mt-6">
+        <Card variant="default">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outlinePurple">Edit Profile</Button>
+            <Button variant="purple">Share Profile</Button>
+          </div>
+        </Card>
+      </div>
+    </main>
+  );
+}
