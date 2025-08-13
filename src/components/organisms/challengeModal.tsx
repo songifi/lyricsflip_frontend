@@ -19,7 +19,7 @@ function RoundDetailsView({ roundId }: { roundId: bigint }) {
     try {
       const result = await ensureActive(roundId);
       console.log('[ChallengeModal] Round activation result:', result);
-      
+
       // Close modal first, then navigate
       closeModal();
       goToGame(roundId);
@@ -40,8 +40,8 @@ function RoundDetailsView({ roundId }: { roundId: bigint }) {
       )}
       <div className="flex justify-end space-x-2 pt-4">
         <Button variant="outline" onClick={closeModal}>Cancel</Button>
-        <Button 
-          disabled={isLoading} 
+        <Button
+          disabled={isLoading}
           onClick={handleStartRound}
         >
           {isLoading ? 'Starting...' : 'Start Round'}
@@ -117,8 +117,8 @@ export const ChallengeModal = () => {
     }
 
     if (!validation?.isValid) {
-        console.log("[ChallengeModal] Format validation failed based on hook state. Error should be in joinError.");
-        return;
+      console.log("[ChallengeModal] Format validation failed based on hook state. Error should be in joinError.");
+      return;
     }
 
     // Clear any previous errors
@@ -136,12 +136,12 @@ export const ChallengeModal = () => {
 
       console.log('[ChallengeModal] Attempting to directly join round:', roundIdToJoin.toString());
       await joinRound(roundIdToJoin);
-      
+
       // Set the round ID and start waiting for round data
       setJoinedRoundId(roundIdToJoin);
       setIsWaitingForRoundData(true);
       console.log('[ChallengeModal] Join successful, waiting for round data to be available...');
-      
+
     } catch (error) {
       console.error('[ChallengeModal] Failed to join round from direct attempt (error caught in component):', error);
     }
@@ -190,8 +190,8 @@ export const ChallengeModal = () => {
             <Button variant="outline" onClick={closeModal} disabled={isLoading}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleDirectJoin} 
+            <Button
+              onClick={handleDirectJoin}
               disabled={isLoading || !code || !validation?.isValid || !!joinError}
             >
               {isJoining ? (
