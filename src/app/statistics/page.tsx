@@ -172,7 +172,7 @@ export default function StatisticsPage() {
   const hasData = rounds.length > 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-6xl mx-auto md:mt-24 lg:mt-28 px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold">Player Statistics</h1>
 
       {!isReady ? (
