@@ -5,7 +5,7 @@ import React from 'react';
 import { Settings } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { FiHome, FiCreditCard, FiGrid } from 'react-icons/fi';
+import { FiHome, FiCreditCard, FiGrid, FiPieChart } from 'react-icons/fi';
 import { IoTrophyOutline } from 'react-icons/io5';
 
 // Navigation items array
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/', label: 'Home' },
   { href: '/wallet', label: 'Wallet' },
   { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/statistics', label: 'Stats' },
   { href: '/notifications', label: 'Notifications' },
   { href: '/profile', label: 'Profile' },
   { href: '/more', label: 'More' },
@@ -32,6 +33,11 @@ const mobileNavItems = [
     href: '/leaderboard',
     label: 'Leaderboard',
     icon: <IoTrophyOutline className="h-6 w-6" />,
+  },
+  {
+    href: '/statistics',
+    label: 'Stats',
+    icon: <FiPieChart className="h-6 w-6" />,
   },
   {
     href: '/more',
