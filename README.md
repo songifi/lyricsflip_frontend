@@ -35,7 +35,7 @@ In a new terminal, from the contracts directory:
 sozo build --typescript
 
 # Deploy the contracts to the local Katana node
-sozo migrate
+sozo migrate --rpc-url http://127.0.0.1:5050
 ```
 
 After migration, note the `WORLD_ADDRESS` from the output.
