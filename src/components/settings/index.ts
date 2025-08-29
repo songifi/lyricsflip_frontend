@@ -1,0 +1,10 @@
+export { ProfileSection } from './ProfileSection';
+export { NotificationsSection } from './NotificationsSection';
+export { PrivacySection } from './PrivacySection';
+export { GameSection } from './GameSection';
+export { WalletSection } from './WalletSection';
+export { AppearanceSection } from './AppearanceSection';
+export { LocaleSection } from './LocaleSection';
+export { AccessibilitySection } from './AccessibilitySection';
+export { DataManagementSection } from './DataManagementSection';
+export { AboutSection } from './AboutSection';
