@@ -1,7 +1,8 @@
 import { useDojoSDK, useModels } from "@dojoengine/sdk/react";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { ModelsMapping, RoundCreated, Round, RoundPlayer } from "../typescript/models.gen";
+import { ModelsMapping, type Round, type RoundPlayer } from "../typescript/models.gen";
 import { useAccount } from "@starknet-react/core";
+import { getModel } from "../utils/modelAccess";
 
 interface RoundEvent {
   round_id: string;
@@ -28,14 +29,15 @@ const GENRE_ENUM_MAP: Record<string, string> = {
   "Rnb": "rnb",
 };
 
-const transformEventData = (roundData: any, roundId: string, accountAddress: string): RoundEvent => {
+const transformEventData = (roundModel: Round, roundId: string, accountAddress: string): RoundEvent => {
   return {
     round_id: roundId,
-    creator: roundData.round?.creator || accountAddress,
-    genre: roundData.round?.genre || 'unknown',
+    creator: String(roundModel.creator || accountAddress),
+    // No explicit genre field on Round; keep placeholder for UI compatibility
+    genre: 'unknown',
     timestamp: Date.now(),
-    status: roundData.round?.state?.toString() || 'unknown',
-    players_count: Number(roundData.round?.players_count || 0)
+    status: String(roundModel.state?.toString() ?? 'unknown'),
+    players_count: Number(roundModel.players_count ?? 0),
   };
 };
 
@@ -59,7 +61,7 @@ export const useRoundEvents = (): UseRoundEventsReturn => {
 
   const processLatestEvent = useCallback(() => {
     try {
-      if (!roundModels || !Array.isArray(roundModels) || roundModels.length === 0) {
+      if (!roundModels || Object.keys(roundModels).length === 0) {
         console.log('[RoundID Flow] No Round models found, attempt:', retryCount.current + 1);
         
         // Implement retry mechanism
@@ -78,36 +80,35 @@ export const useRoundEvents = (): UseRoundEventsReturn => {
       // Reset retry count when models are found
       retryCount.current = 0;
 
-      // Get the latest round from the array
-      const latestRoundEntry = roundModels[roundModels.length - 1];
-      console.log('[RoundID Flow] Latest round entry:', {
-        entry: latestRoundEntry,
-        keys: Object.keys(latestRoundEntry),
-        values: Object.values(latestRoundEntry)
-      });
+      // Extract all Round models from the object store
+      const containers = Object.values(roundModels as Record<string, any>);
+      const extracted: Array<{ entityId: string; model: Round }> = [];
+      for (const container of containers) {
+        const keys = Object.keys(container);
+        if (keys.length === 0) continue;
+        const entityId = keys[0];
+        const entity = container[entityId];
+        const roundModel = getModel<Round>(entity, 'Round');
+        if (roundModel) extracted.push({ entityId, model: roundModel });
+      }
+      if (extracted.length === 0) {
+        console.log('[RoundID Flow] No extractable Round models present');
+        return;
+      }
 
-      // Extract the round ID and data
-      const roundId = Object.keys(latestRoundEntry)[0];
-      const roundData = latestRoundEntry[roundId];
-      console.log('[RoundID Flow] Initial extraction:', {
-        roundId,
-        roundData,
-        roundDataKeys: roundData ? Object.keys(roundData) : []
-      });
+      // Pick the latest round by highest round_id
+      extracted.sort((a, b) => Number(BigInt(a.model.round_id) - BigInt(b.model.round_id)));
+      const latest = extracted[extracted.length - 1];
+      const roundData = latest.model;
+      const roundIdDec = BigInt(roundData.round_id).toString();
+      const actualRoundId = `0x${BigInt(roundData.round_id).toString(16)}`;
+      console.log('[RoundID Flow] Latest round selected:', { entityId: latest.entityId, roundIdDec, actualRoundId });
 
-      // Get the actual round ID from the event data
-      const actualRoundId = roundData?.round_id ? `0x${BigInt(roundData.round_id).toString(16)}` : roundId;
-      console.log('[RoundID Flow] Round ID conversion:', {
-        originalRoundId: roundId,
-        roundDataRoundId: roundData?.round_id,
-        actualRoundId,
-        isHex: actualRoundId.startsWith('0x')
-      });
-
-      // Create a data hash to check for actual changes
+      // Create a data hash to check for actual changes (round fields + player count)
       const dataHash = JSON.stringify({
-        roundData,
-        playerData: playerModels?.[`${account?.address},${actualRoundId}`]
+        round_id: roundIdDec,
+        state: String(roundData.state),
+        players_count: Number(roundData.players_count ?? 0),
       });
       
       // Skip if we've already processed this round with the same data
@@ -140,8 +141,8 @@ export const useRoundEvents = (): UseRoundEventsReturn => {
         
         // Update state with new data
         setLatestEvent(transformedEvent);
-        setRoundStatus(roundData.round?.state?.toString() || 'unknown');
-        setPlayersCount(Number(roundData.round?.players_count || 0));
+        setRoundStatus(String(roundData.state?.toString() ?? 'unknown'));
+        setPlayersCount(Number(roundData.players_count ?? 0));
         console.log('[RoundID Flow] State updated with new event:', transformedEvent);
       }
     } catch (err) {

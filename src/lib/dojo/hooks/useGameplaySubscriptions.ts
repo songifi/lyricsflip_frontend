@@ -43,7 +43,7 @@ interface UseGameplaySubscriptionsResult {
 export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
   // Remove the console.log that's causing noise in the logs
   const { account } = useAccount();
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [, setIsSubscribed] = useState(false);
   
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [currentRoundId, setCurrentRoundId] = useState<bigint | null>(null);
@@ -57,9 +57,8 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
   const accountRef = useRef<string | undefined>(undefined);
   accountRef.current = account?.address;
   
-  // Create event query for PlayerAnswer events
-  // Based on the manifest: PlayerAnswer has no members (no keys)
-  const query = useMemo(() => {
+  // Create event query for PlayerAnswer events (no members/keys)
+  const playerAnswerQuery = useMemo(() => {
     // Since PlayerAnswer events are global and we filter by player address in the callback,
     // we don't need to recreate the query when the account changes
     console.log('🔔 Creating PlayerAnswer event query');
@@ -70,147 +69,143 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
     return new ToriiQueryBuilder()
       .withClause(
         KeysClause(
-          ["lyricsflip-PlayerAnswer"], // Event name
-          [undefined, undefined], // Two undefined keys for events with no members
+          ["lyricsflip-PlayerAnswer"],
+          [], // no members
           "FixedLen"
         ).build()
       )
       .includeHashedKeys();
   }, []); // Remove dependency to prevent excessive re-renders
 
+  // Create event query for RoundWinner events (no members/keys)
+  const roundWinnerQuery = useMemo(() => {
+    console.log('🔔 Creating RoundWinner event query');
+    return new ToriiQueryBuilder()
+      .withClause(
+        KeysClause(
+          ["lyricsflip-RoundWinner"],
+          [], // no members
+          "FixedLen"
+        ).build()
+      )
+      .includeHashedKeys();
+  }, []);
+
   // Subscribe to PlayerAnswer events using the imperative subscription approach
   const { sdk } = useDojoSDK();
   
   // Set up imperative subscription
   useEffect(() => {
-    console.log('🔔 Setting up imperative subscription - SDK:', !!sdk, 'Query:', !!query);
-    if (!sdk || !query) {
+    console.log('🔔 Setting up imperative subscription - SDK:', !!sdk, 'Queries:', !!playerAnswerQuery, !!roundWinnerQuery);
+    if (!sdk || !playerAnswerQuery || !roundWinnerQuery) {
       console.log('🔔 Skipping subscription setup - missing SDK or query');
       return;
     }
     
-    console.log('🔔 Setting up imperative subscription for PlayerAnswer events');
-    console.log('🔔 Query details:', query);
+    console.log('🔔 Setting up imperative subscriptions for PlayerAnswer and RoundWinner events');
+    console.log('🔔 PlayerAnswer Query details:', playerAnswerQuery);
+    console.log('🔔 RoundWinner Query details:', roundWinnerQuery);
     
     try {
-      // Subscribe to events using the SDK with callback
-      const subscription = sdk.subscribeEventQuery({
-        query,
-        callback: (events) => {
-          console.log('🔔 Received PlayerAnswer events:', events);
-          console.log('🔔 Events data:', events?.data);
-          console.log('🔔 Events error:', events?.error);
-          
-          // 🚀 NEW: Process events directly from callback instead of relying on sdk.models
-          if (events?.data && Array.isArray(events.data)) {
-            events.data.forEach((event, index) => {
-              console.log(`🔔 Event ${index} structure:`, event);
-              console.log(`🔔 Event ${index} keys:`, Object.keys(event));
-              console.log(`🔔 Event ${index} entityId:`, (event as any).entityId);
-              
-              // Try different ways to extract PlayerAnswer data based on entityId
-              let playerAnswerData = null;
-              
-              if ((event as any).entityId === '0x0') {
-                // For creator account (entityId 0x0), try direct access
-                console.log(`🔔 Event ${index} - Creator account detected (entityId 0x0)`);
-                console.log(`🔔 Event ${index} - Direct event data:`, event);
-                
-                // Try to extract data directly from the event
-                if (event && typeof event === 'object') {
-                  // Look for PlayerAnswer data in different possible locations
-                  playerAnswerData = (event as any).data || (event as any).PlayerAnswer || event;
-                  console.log(`🔔 Event ${index} - Creator data extraction attempt:`, playerAnswerData);
-                }
-              } else {
-                // For joiner account, use the normal nested structure
-                console.log(`🔔 Event ${index} - Joiner account detected (entityId: ${(event as any).entityId})`);
-                playerAnswerData = (event as any)?.models?.lyricsflip?.PlayerAnswer;
-                console.log(`🔔 Event ${index} - Joiner data extraction:`, playerAnswerData);
-              }
-              
-              console.log(`🔔 Event ${index} - Final extracted PlayerAnswer data:`, playerAnswerData);
-              
-              if (playerAnswerData && typeof playerAnswerData === 'object' && 'player' in playerAnswerData) {
+      // Subscribe to PlayerAnswer events
+      const subPlayerAnswerPromise = sdk.subscribeEventQuery({
+        query: playerAnswerQuery,
+        callback: ({ data, error }) => {
+          console.log('🔔 Received PlayerAnswer events:', { hasData: !!data, hasError: !!error });
+          if (error) return console.error('🔔 PlayerAnswer subscription error:', error);
+          if (!data) return;
+
+          const containers = Object.values(data as Record<string, any>);
+          containers.forEach((container, index) => {
+            for (const entityId of Object.keys(container)) {
+              const entity = container[entityId];
+              const playerAnswerData = entity?.models?.lyricsflip?.PlayerAnswer;
+              if (!playerAnswerData) continue;
+
               const eventPlayer = playerAnswerData.player;
-              
-              // Validate addresses before padding to prevent BigInt conversion errors
-              if (!eventPlayer || typeof eventPlayer !== 'string' || eventPlayer.length < 3) {
-                console.log(`🔔 Event ${index} - Invalid event player address:`, eventPlayer);
-                return;
-              }
-              
               const currentAccountAddress = accountRef.current;
-              if (!currentAccountAddress || typeof currentAccountAddress !== 'string' || currentAccountAddress.length < 3) {
-                console.log(`🔔 Event ${index} - Invalid account address:`, currentAccountAddress);
-                return;
-              }
-              
+              if (!eventPlayer || !currentAccountAddress) continue;
+
               try {
                 const paddedEventPlayer = addAddressPadding(eventPlayer);
                 const paddedAccountAddress = addAddressPadding(currentAccountAddress);
                 const isMatch = paddedEventPlayer === paddedAccountAddress;
-              
-                console.log(`🔔 Event ${index} - Comparing event player to account (padded):`, { 
-                  eventPlayer, 
-                  paddedEventPlayer, 
-                  accountAddress: currentAccountAddress, 
-                  paddedAccountAddress, 
-                  isMatch 
-                });
-                
                 if (isMatch) {
                   const processedEvent: ProcessedPlayerAnswerEvent = {
                     round_id: playerAnswerData.round_id?.toString() || '0',
                     player: eventPlayer || '',
                     card_id: playerAnswerData.card_id?.toString() || '0',
-                    answer: playerAnswerData.answer || '',
-                    is_correct: playerAnswerData.is_correct || false,
+                    answer: '', // not present in model; keep field for compatibility
+                    is_correct: !!playerAnswerData.is_correct,
                     timestamp: Date.now(),
-                    entityId: (event as any).entityId || '',
-                    raw: playerAnswerData
+                    entityId,
+                    raw: playerAnswerData,
                   };
-                  
-                  console.log('🔔 🎯 PROCESSED EVENT - Calling callback:', processedEvent);
-                  
-                  // Call the callback directly using ref to avoid stale closure
-                  if (callbacksRef.current.onPlayerAnswer) {
-                    console.log('🔔 🎯 About to call onPlayerAnswer callback with:', processedEvent);
-                    try {
-                      callbacksRef.current.onPlayerAnswer(processedEvent);
-                      console.log('🔔 ✅ Successfully called onPlayerAnswer callback');
-                    } catch (error) {
-                      console.error('🔔 ❌ Error calling onPlayerAnswer callback:', error);
-                    }
-                  } else {
-                    console.log('🔔 ⚠️ No onPlayerAnswer callback available');
-                  }
+                  callbacksRef.current.onPlayerAnswer?.(processedEvent);
                 }
-              } catch (error) {
-                console.error(`🔔 Event ${index} - Error processing address padding:`, error);
-                console.error(`🔔 Event ${index} - Event player:`, eventPlayer);
-                console.error(`🔔 Event ${index} - Account address:`, currentAccountAddress);
+              } catch (err) {
+                console.error('🔔 Error processing PlayerAnswer callback event:', err);
               }
             }
           });
-        }
-        }
+        },
       });
-      
-      console.log('🔔 Imperative subscription set up successfully:', subscription);
-      
+
+      // Subscribe to RoundWinner events
+      const subRoundWinnerPromise = sdk.subscribeEventQuery({
+        query: roundWinnerQuery,
+        callback: ({ data, error }) => {
+          console.log('🔔 Received RoundWinner events:', { hasData: !!data, hasError: !!error });
+          if (error) return console.error('🔔 RoundWinner subscription error:', error);
+          if (!data) return;
+
+          const containers = Object.values(data as Record<string, any>);
+          containers.forEach((container) => {
+            for (const entityId of Object.keys(container)) {
+              const entity = container[entityId];
+              const winnerData = entity?.models?.lyricsflip?.RoundWinner;
+              if (!winnerData) continue;
+
+              try {
+                const roundIdStr = winnerData.round_id?.toString() || '0';
+                const matchesRound = currentRoundId && currentRoundId !== 0n
+                  ? roundIdStr === currentRoundId.toString()
+                  : true;
+                if (!matchesRound) continue;
+
+                const processed: ProcessedRoundWinnerEvent = {
+                  round_id: roundIdStr,
+                  winner: winnerData.winner || '',
+                  score: winnerData.score?.toString() || '0',
+                  timestamp: Date.now(),
+                  entityId,
+                  raw: winnerData,
+                };
+                callbacksRef.current.onRoundWinner?.(processed);
+              } catch (err) {
+                console.error('🔔 Error processing RoundWinner callback event:', err);
+              }
+            }
+          });
+        },
+      });
+
+      console.log('🔔 Imperative subscriptions set up');
+
       return () => {
-        console.log('🔔 Cleaning up imperative subscription');
-        subscription?.then?.((sub) => {
-          if (sub && typeof sub === 'object' && 'unsubscribe' in sub) {
-            (sub as any).unsubscribe();
-          }
-        });
+        console.log('🔔 Cleaning up imperative subscriptions');
+        Promise.all([subPlayerAnswerPromise, subRoundWinnerPromise]).then((subs) => {
+          subs.forEach((sub) => {
+            if (sub && typeof sub === 'object' && 'unsubscribe' in sub) {
+              (sub as any).unsubscribe();
+            }
+          });
+        }).catch((e) => console.error('🔔 Error during subscriptions cleanup', e));
       };
     } catch (error) {
       console.error('🔔 Error setting up imperative subscription:', error);
     }
-  }, [sdk, query]); // Remove account from dependencies to prevent re-renders
+  }, [sdk, playerAnswerQuery, roundWinnerQuery]); // Remove account from dependencies to prevent re-renders
   
   // Get raw events from the SDK
   const rawEvents = useMemo(() => {
@@ -236,17 +231,28 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
       return {};
     }
   }, [sdk]);
+
+  const rawRoundWinnerEvents = useMemo(() => {
+    if (!sdk) return {};
+    try {
+      const events = (sdk as any).models?.["lyricsflip-RoundWinner"] || {};
+      return events;
+    } catch (e) {
+      console.error('🔔 Error getting raw RoundWinner events:', e);
+      return {};
+    }
+  }, [sdk]);
   
   // Debug logging for query
   useEffect(() => {
     console.log('🔔 Event query debug:', {
-      hasQuery: !!query,
-      queryDetails: query,
+      hasPlayerAnswerQuery: !!playerAnswerQuery,
+      hasRoundWinnerQuery: !!roundWinnerQuery,
       accountAddress: accountRef.current,
       hasSDK: !!sdk,
       rawEventsCount: Object.keys(rawEvents).length
     });
-  }, [query, accountRef.current, sdk, rawEvents]);
+  }, [playerAnswerQuery, roundWinnerQuery, accountRef.current, sdk, rawEvents]);
   
   // Use ref to track previous events for deep comparison
   const prevEventsRef = useRef<any>(null);
@@ -308,8 +314,8 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
                 round_id: playerAnswerData.round_id?.toString() || '0',
                 player: eventPlayer || '',
                 card_id: playerAnswerData.card_id?.toString() || '0',
-                answer: playerAnswerData.answer || '',
-                is_correct: playerAnswerData.is_correct || false,
+                answer: '',
+                is_correct: !!playerAnswerData.is_correct,
                 timestamp: Date.now(), // Use current timestamp since event doesn't have one
                 entityId,
                 raw: playerAnswerData
@@ -346,6 +352,37 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
   const latestEvent = useMemo(() => {
     return processedEvents.length > 0 ? processedEvents[0] : null;
   }, [processedEvents]);
+
+  // Process RoundWinner events
+  const processedRoundWinnerEvents = useMemo(() => {
+    const processed: ProcessedRoundWinnerEvent[] = [];
+    for (const [entityId, eventData] of Object.entries(rawRoundWinnerEvents)) {
+      try {
+        const winnerData = (eventData as any)?.models?.lyricsflip?.RoundWinner;
+        if (!winnerData) continue;
+        const roundIdStr = winnerData.round_id?.toString() || '0';
+        // Filter to current round if available (0n = wildcard)
+        if (currentRoundId && currentRoundId !== 0n && roundIdStr !== currentRoundId.toString()) continue;
+        processed.push({
+          round_id: roundIdStr,
+          winner: winnerData.winner || '',
+          score: winnerData.score?.toString() || '0',
+          timestamp: Date.now(),
+          entityId,
+          raw: winnerData,
+        });
+      } catch (e) {
+        console.error('🔔 Error processing RoundWinner event:', e, eventData);
+      }
+    }
+    // Newest first
+    processed.sort((a, b) => b.timestamp - a.timestamp);
+    return processed;
+  }, [rawRoundWinnerEvents, currentRoundId]);
+
+  const latestRoundWinnerEvent = useMemo(() => {
+    return processedRoundWinnerEvents.length > 0 ? processedRoundWinnerEvents[0] : null;
+  }, [processedRoundWinnerEvents]);
   
   // Call callback when new event arrives
   useEffect(() => {
@@ -402,7 +439,7 @@ export const useGameplaySubscriptions = (): UseGameplaySubscriptionsResult => {
     subscriptionError,
     events: processedEvents,
     latestEvent,
-    roundWinnerEvents: [], // TODO: Implement RoundWinner event processing
-    latestRoundWinnerEvent: null
+    roundWinnerEvents: processedRoundWinnerEvents,
+    latestRoundWinnerEvent
   };
 }; 

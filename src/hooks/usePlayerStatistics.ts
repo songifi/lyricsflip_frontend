@@ -1,13 +1,14 @@
 import { useAccount } from '@starknet-react/core';
 import { useEntityQuery, useModels } from '@dojoengine/sdk/react';
 import { ToriiQueryBuilder, MemberClause } from '@dojoengine/sdk';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import {
   ModelsMapping,
   Round,
   RoundPlayer,
   PlayerStats as PlayerStatsModel,
 } from '@/lib/dojo/typescript/models.gen';
+import { useGameplaySubscriptions } from '@/lib/dojo/hooks/useGameplaySubscriptions';
 
 export type PlayerRoundSummary = {
   roundId: bigint;
@@ -78,6 +79,20 @@ const bi = (v: any): bigint => {
 
 export function usePlayerStatistics(): UsePlayerStatistics {
   const { account } = useAccount();
+  const { subscribeToGameplay, unsubscribeFromGameplay } = useGameplaySubscriptions();
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  // Subscribe to gameplay events for the connected account and trigger recomputation
+  useEffect(() => {
+    if (!account?.address) return;
+    subscribeToGameplay(0n, {
+      onPlayerAnswer: () => setRefreshTick((x) => x + 1),
+      onRoundWinner: () => setRefreshTick((x) => x + 1),
+    });
+    return () => {
+      unsubscribeFromGameplay();
+    };
+  }, [account?.address, subscribeToGameplay, unsubscribeFromGameplay]);
 
   // Pull all rounds and round players; also PlayerStats for comparisons
   useEntityQuery(
@@ -111,7 +126,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
         return keys.length > 0 ? (e[keys[0]] as Round) : null;
       })
       .filter(Boolean) as Round[];
-  }, [roundsMap]);
+  }, [roundsMap, refreshTick]);
 
   const allRoundPlayers: RoundPlayer[] = useMemo(() => {
     if (!roundPlayersMap) return [];
@@ -121,7 +136,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
         return keys.length > 0 ? (e[keys[0]] as RoundPlayer) : null;
       })
       .filter(Boolean) as RoundPlayer[];
-  }, [roundPlayersMap]);
+  }, [roundPlayersMap, refreshTick]);
 
   const allPlayerStats: PlayerStatsModel[] = useMemo(() => {
     if (!playerStatsMap) return [];
@@ -131,21 +146,21 @@ export function usePlayerStatistics(): UsePlayerStatistics {
         return keys.length > 0 ? (e[keys[0]] as PlayerStatsModel) : null;
       })
       .filter(Boolean) as PlayerStatsModel[];
-  }, [playerStatsMap]);
+  }, [playerStatsMap, refreshTick]);
 
   // Build index for quick lookups
   const roundById = useMemo(() => {
     const m = new Map<string, Round>();
     for (const r of allRounds) m.set(bi(r.round_id).toString(), r);
     return m;
-  }, [allRounds]);
+  }, [allRounds, refreshTick]);
 
   const myRoundPlayers = useMemo(() => {
     if (!account?.address) return [] as RoundPlayer[];
     return allRoundPlayers.filter(
       (rp) => Array.isArray(rp.player_to_round_id) && rp.player_to_round_id[0] === account.address
     );
-  }, [allRoundPlayers, account?.address]);
+  }, [allRoundPlayers, account?.address, refreshTick]);
 
   const roundsByIdToAllPlayers = useMemo(() => {
     const grouped = new Map<string, RoundPlayer[]>();
@@ -156,7 +171,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
       grouped.set(roundId, arr);
     }
     return grouped;
-  }, [allRoundPlayers]);
+  }, [allRoundPlayers, refreshTick]);
 
   const rounds: PlayerRoundSummary[] = useMemo(() => {
     return myRoundPlayers.map((rp) => {
@@ -185,9 +200,9 @@ export function usePlayerStatistics(): UsePlayerStatistics {
         playersInRound: peers.length || undefined,
       } as PlayerRoundSummary;
     });
-  }, [myRoundPlayers, roundById, roundsByIdToAllPlayers]);
+  }, [myRoundPlayers, roundById, roundsByIdToAllPlayers, refreshTick]);
 
-  const completedRounds = useMemo(() => rounds.filter((r) => r.completed), [rounds]);
+  const completedRounds = useMemo(() => rounds.filter((r) => r.completed), [rounds, refreshTick]);
 
   const summary: SummaryStats = useMemo(() => {
     const totalPlayed = rounds.length;
@@ -206,7 +221,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
     const bestTime = bestTimes.length ? Math.min(...bestTimes) : undefined;
 
     return { totalPlayed, totalCompleted, wins, winRate, avgScore, avgAccuracy, bestTime };
-  }, [rounds, completedRounds]);
+  }, [rounds, completedRounds, refreshTick]);
 
   const modeStats: ModeStats = useMemo(() => {
     const groups = new Map<string, PlayerRoundSummary[]>();
@@ -237,7 +252,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
       };
     }
     return result;
-  }, [rounds]);
+  }, [rounds, refreshTick]);
 
   const progress: ProgressPoint[] = useMemo(() => {
     const pts = completedRounds
@@ -249,7 +264,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
       .filter((p) => p.t > 0)
       .sort((a, b) => a.t - b.t);
     return pts;
-  }, [completedRounds]);
+  }, [completedRounds, refreshTick]);
 
   const comparison: Comparison = useMemo(() => {
     if (!account?.address || allPlayerStats.length === 0) return {};
@@ -267,7 +282,7 @@ export function usePlayerStatistics(): UsePlayerStatistics {
       totalPlayers,
       topPercentileByWins,
     };
-  }, [account?.address, allPlayerStats]);
+  }, [account?.address, allPlayerStats, refreshTick]);
 
   const isReady = Boolean(account?.address);
 
