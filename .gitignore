@@ -44,3 +44,5 @@ src/dump_debug.log
 src/dump_skipped.log
 src/lib/dojo/dump_debug.log
 src/lib/dojo/dump_skipped.log
+
+certificates
